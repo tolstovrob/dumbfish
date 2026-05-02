@@ -1,5 +1,5 @@
 """
-Конфигурация движка Dumbfish
+Конфигурация движка
 """
 
 from dataclasses import dataclass

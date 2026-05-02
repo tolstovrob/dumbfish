@@ -1,5 +1,5 @@
 """
-UCI-протокол движка Dumbfish
+UCI-протокол движка
 """
 
 import sys
