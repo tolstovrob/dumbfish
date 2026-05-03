@@ -31,19 +31,37 @@ def _order_moves(board: chess.Board, moves: list[chess.Move]) -> list[chess.Move
     return sorted(moves, key=score, reverse=True)
 
 
+def _to_side_score(board: chess.Board) -> int:
+    """Оценка с точки зрения того, чей сейчас ход."""
+    score = evaluate(board)
+    return score if board.turn == chess.WHITE else -score
+
+
 def _quiescence(board: chess.Board, alpha: int, beta: int) -> int:
-    sign = 1 if board.turn == chess.WHITE else -1
-    stand_pat = evaluate(board) * sign
+    """
+    Quiescence search. alpha/beta — с точки зрения игрока, чей ход.
+    Возвращает оценку с его же точки зрения.
+    """
+    if board.is_game_over():
+        return _to_side_score(board)
 
-    if stand_pat >= beta:
-        return beta
-    if stand_pat > alpha:
-        alpha = stand_pat
+    in_check = board.is_check()
 
-    captures = [m for m in board.legal_moves if board.is_capture(m)]
-    captures = _order_moves(board, captures)
+    if not in_check:
+        stand_pat = _to_side_score(board)
+        if stand_pat >= beta:
+            return beta
+        if stand_pat > alpha:
+            alpha = stand_pat
 
-    for move in captures:
+    if in_check:
+        moves = list(board.legal_moves)
+    else:
+        moves = [m for m in board.legal_moves if board.is_capture(m)]
+
+    moves = _order_moves(board, moves)
+
+    for move in moves:
         board.push(move)
         score = -_quiescence(board, -beta, -alpha)
         board.pop()
@@ -63,12 +81,11 @@ def _negamax(
     beta: int,
 ) -> tuple[int, chess.Move | None]:
     """
-    Negamax с альфа-бета отсечением.
-    Возвращает (оценка с точки зрения того, чей ход, лучший_ход).
+    Negamax с альфа-бета.
+    alpha/beta и результат — с точки зрения того, чей ход.
     """
     if board.is_game_over():
-        sign = -1 if board.turn == chess.WHITE else 1
-        return sign * evaluate(board), None
+        return _to_side_score(board), None
 
     if depth == 0:
         return _quiescence(board, alpha, beta), None
