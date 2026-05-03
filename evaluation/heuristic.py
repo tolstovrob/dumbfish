@@ -118,12 +118,6 @@ def _is_endgame(board: chess.Board) -> bool:
 
 
 def evaluate(board: chess.Board) -> int:
-    if board.is_checkmate():
-        return -100_000 if board.turn == chess.WHITE else 100_000
-
-    if board.is_stalemate() or board.is_insufficient_material():
-        return 0
-
     score = 0
     endgame = _is_endgame(board)
 
