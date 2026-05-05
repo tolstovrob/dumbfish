@@ -11,7 +11,7 @@ class EvalType(Enum):
     PHASED = "phased"
 
 
-EVAL_TYPE = EvalType.PST
+EVAL_TYPE = EvalType.PHASED
 
 _EVALUATORS = {
     EvalType.NAIVE: naive_evaluate,
