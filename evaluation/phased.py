@@ -62,6 +62,36 @@ MOBILITY_EG = {
 
 KING_SHIELD = [0, 10, 20, 30, 40, 50, 60, 70, 80]
 
+# Пешки
+ISOLATED_MG = -15
+ISOLATED_EG = -25
+DOUBLED_MG = -20
+DOUBLED_EG = -30
+PASSED = [0, 0, 5, 10, 20, 35, 50, 100]
+PASSED_EG_MULT = 2.0
+
+# Безопасность короля
+SHIELD = [0, 10, 20, 30, 40, 50, 60, 70, 80]
+OPEN_FILE = -15
+HALF_OPEN_FILE = -10
+SAFETY_PHASE_MIN = 0.2
+
+# Пара слонов
+BISHOP_PAIR_MG = 50
+BISHOP_PAIR_EG = 70
+
+# Ладьи
+ROOK_OPEN_MG = 25
+ROOK_OPEN_EG = 35
+ROOK_SEMIOPEN_MG = 15
+ROOK_SEMIOPEN_EG = 20
+ROOK_7TH_MG = 20
+ROOK_7TH_EG = 30
+
+# Коневой фортпост
+OUTPOST_MG = 15
+OUTPOST_EG = 10
+
 
 def _calculate_phase(board: chess.Board) -> float:
     phase = 0
@@ -81,8 +111,7 @@ def _mobility(board: chess.Board, phase: float) -> int:
         mul = 1 if color == chess.WHITE else -1
         for pt in [chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN]:
             for sq in board.pieces(pt, color):
-                count = board.attacks_mask(sq) & ~board.occupied_co[color]
-                count = count.bit_count()
+                count = (board.attacks_mask(sq) & ~board.occupied_co[color]).bit_count()
                 mg = next((b for c, b in reversed(MOBILITY_MG[pt]) if count >= c), 0)
                 eg = next((b for c, b in reversed(MOBILITY_EG[pt]) if count >= c), 0)
                 score += mul * _interpolate(mg, eg, phase)
@@ -102,10 +131,10 @@ def _pawns(board: chess.Board, phase: float) -> int:
 
             if not (chess.BB_FILES[file - 1] & own if file > 0 else False) and \
                not (chess.BB_FILES[file + 1] & own if file < 7 else False):
-                score += mul * _interpolate(-15, -25, phase)
+                score += mul * _interpolate(ISOLATED_MG, ISOLATED_EG, phase)
 
             if (int(own) & chess.BB_FILES[file]).bit_count() > 1:
-                score += mul * _interpolate(-20, -30, phase)
+                score += mul * _interpolate(DOUBLED_MG, DOUBLED_EG, phase)
 
             if color == chess.WHITE:
                 blocked = False
@@ -120,8 +149,8 @@ def _pawns(board: chess.Board, phase: float) -> int:
                         blocked = True
                         break
                 if not blocked:
-                    bonus = [0, 0, 5, 10, 20, 35, 50, 100][rank]
-                    score += mul * _interpolate(bonus, bonus * 2, phase)
+                    bonus = PASSED[rank]
+                    score += mul * _interpolate(bonus, int(bonus * PASSED_EG_MULT), phase)
             else:
                 blocked = False
                 for r in range(rank - 1, -1, -1):
@@ -135,14 +164,14 @@ def _pawns(board: chess.Board, phase: float) -> int:
                         blocked = True
                         break
                 if not blocked:
-                    bonus = [0, 0, 5, 10, 20, 35, 50, 100][7 - rank]
-                    score += mul * _interpolate(bonus, bonus * 2, phase)
+                    bonus = PASSED[7 - rank]
+                    score += mul * _interpolate(bonus, int(bonus * PASSED_EG_MULT), phase)
 
     return score
 
 
 def _king_safety(board: chess.Board, phase: float) -> int:
-    if phase < 0.2:
+    if phase < SAFETY_PHASE_MIN:
         return 0
 
     score = 0
@@ -165,7 +194,7 @@ def _king_safety(board: chess.Board, phase: float) -> int:
                         if board.piece_at(chess.square(f, r)) == chess.Piece(chess.PAWN, color):
                             shield += 1
                             break
-        score += mul * int(KING_SHIELD[min(shield, 8)] * phase)
+        score += mul * int(SHIELD[min(shield, 8)] * phase)
 
         penalty = 0
         for f in [file - 1, file, file + 1]:
@@ -173,9 +202,9 @@ def _king_safety(board: chess.Board, phase: float) -> int:
                 own_pawns = int(board.pieces(chess.PAWN, color)) & chess.BB_FILES[f]
                 enemy_pawns = int(board.pieces(chess.PAWN, not color)) & chess.BB_FILES[f]
                 if not own_pawns:
-                    penalty -= 15
+                    penalty += OPEN_FILE
                     if not enemy_pawns:
-                        penalty -= 10
+                        penalty += HALF_OPEN_FILE
         score += mul * int(penalty * phase)
 
     return score
@@ -190,7 +219,7 @@ def _bishop_pair(board: chess.Board, phase: float) -> int:
             sq1, sq2 = bishops[0], bishops[1]
             if (chess.square_file(sq1) + chess.square_rank(sq1)) % 2 != \
                (chess.square_file(sq2) + chess.square_rank(sq2)) % 2:
-                score += mul * _interpolate(50, 70, phase)
+                score += mul * _interpolate(BISHOP_PAIR_MG, BISHOP_PAIR_EG, phase)
     return score
 
 
@@ -205,11 +234,11 @@ def _rooks(board: chess.Board, phase: float) -> int:
             enemy = int(board.pieces(chess.PAWN, not color)) & chess.BB_FILES[file]
             if not own:
                 if not enemy:
-                    score += mul * _interpolate(25, 35, phase)
+                    score += mul * _interpolate(ROOK_OPEN_MG, ROOK_OPEN_EG, phase)
                 else:
-                    score += mul * _interpolate(15, 20, phase)
+                    score += mul * _interpolate(ROOK_SEMIOPEN_MG, ROOK_SEMIOPEN_EG, phase)
             if (color == chess.WHITE and rank == 6) or (color == chess.BLACK and rank == 1):
-                score += mul * _interpolate(20, 30, phase)
+                score += mul * _interpolate(ROOK_7TH_MG, ROOK_7TH_EG, phase)
     return score
 
 
@@ -234,7 +263,7 @@ def _knights(board: chess.Board, phase: float) -> int:
                                 attacked = True
                                 break
                     if not attacked:
-                        score += mul * _interpolate(15, 10, phase)
+                        score += mul * _interpolate(OUTPOST_MG, OUTPOST_EG, phase)
     return score
 
 
