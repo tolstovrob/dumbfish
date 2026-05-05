@@ -1,8 +1,8 @@
 import chess
 from evaluation.naive import evaluate as naive_evaluate
-from evaluation.heuristic import evaluate as heuristic_evaluate
+from evaluation.pst import evaluate as pst_evaluate
 
-EVAL_TYPE = "heuristic"
+EVAL_TYPE = "pst"
 
 def evaluate(board: chess.Board) -> int:
     """Оценка с точки зрения белых. Общие терминальные проверки."""
@@ -15,5 +15,5 @@ def evaluate(board: chess.Board) -> int:
     match EVAL_TYPE:
         case "naive":
             return naive_evaluate(board)
-        case "heuristic":
-            return heuristic_evaluate(board)
+        case "pst":
+            return pst_evaluate(board)
