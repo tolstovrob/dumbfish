@@ -189,7 +189,4 @@ def search(board: chess.Board, max_depth: int, tt: TranspositionTable) -> chess.
         if move is not None:
             best_move = move
         
-        stats = tt.get_stats()
-        print(f"info depth {depth} hashfull {stats['load_factor']}")
-
     return best_move

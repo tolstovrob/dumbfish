@@ -38,9 +38,6 @@ class TranspositionTable:
         self.size -= 1
 
         self.table: list[TTEntry | None] = [None] * (self.size + 1)
-        self.hits = 0
-        self.misses = 0
-        self.writes = 0
 
     
     def __len__(self):
@@ -54,10 +51,8 @@ class TranspositionTable:
         entry = self.table[index]
         
         if entry is not None and entry.hash == hash_val:
-            self.hits += 1
             return entry
         
-        self.misses += 1        
         return None
     
 
@@ -78,7 +73,6 @@ class TranspositionTable:
            or depth >= existing.depth \
            or existing.hash != hash_val:
             self.table[index] = TTEntry(hash_val, depth, score, flag, best_move)
-            self.writes += 1
 
     
     def get_hash(self, board: chess.Board) -> int:
@@ -88,23 +82,3 @@ class TranspositionTable:
 
     def clear(self) -> None:
         self.table = [None] * (self.size + 1)
-        self.hits = 0
-        self.misses = 0
-        self.writes = 0
-
-    
-    def get_stats(self) -> dict:
-        """Статистика использования таблицы."""
-        total_probes = self.hits + (self.misses if self.writes > 0 else 0)
-        hit_rate = (self.hits / total_probes * 100) if total_probes > 0 else 0
-        load_factor = len(self) / (self.size + 1) * 100
-
-        return {
-            'size': self.size + 1,
-            'entries': len(self),
-            'hits': self.hits,
-            'misses': self.misses,
-            'writes': self.writes,
-            'hit_rate': f"{hit_rate:.1f}%",
-            'load_factor': f"{load_factor:.1f}%"
-        }
