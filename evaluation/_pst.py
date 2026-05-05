@@ -1,5 +1,6 @@
 import chess
 
+
 PIECE_VALUES = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
@@ -94,3 +95,11 @@ PST = {
     chess.QUEEN: QUEEN_PST,
     chess.KING: KING_MIDDLEGAME_PST,
 }
+
+
+def get_pst_value(piece_type: chess.PieceType, square: int, is_white: bool) -> int:
+    table = PST[piece_type]
+    if is_white:
+        return table[square]
+    else:
+        return table[square ^ 56]

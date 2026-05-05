@@ -13,14 +13,7 @@
 """
 
 import chess
-from evaluation._pst_const import *
-
-def _get_pst_value(piece_type: chess.PieceType, square: int, is_white: bool) -> int:
-    table = PST[piece_type]
-    if is_white:
-        return table[square]
-    else:
-        return table[square ^ 56]
+from evaluation._pst import *
 
 
 def _is_endgame(board: chess.Board) -> bool:
@@ -43,12 +36,12 @@ def evaluate(board: chess.Board) -> int:
             if piece_type == chess.KING and endgame:
                 score += KING_ENDGAME_PST[square]
             else:
-                score += _get_pst_value(piece_type, square, is_white=True)
+                score += get_pst_value(piece_type, square, is_white=True)
 
         for square in board.pieces(piece_type, chess.BLACK):
             if piece_type == chess.KING and endgame:
                 score -= KING_ENDGAME_PST[square ^ 56]
             else:
-                score -= _get_pst_value(piece_type, square, is_white=False)
+                score -= get_pst_value(piece_type, square, is_white=False)
 
     return score
