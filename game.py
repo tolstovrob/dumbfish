@@ -3,17 +3,20 @@
 """
 
 import chess
+from tt import TranspositionTable
 
 class Game:
     """Хранит текущую доску и операции над ней"""
     
     def __init__(self) -> None:
         self.board = chess.Board()
+        self.tt = TranspositionTable(size_mb=64)
 
     
     def reset(self) -> None:
         """Сброс в начальную позицию"""
         self.board = chess.Board()
+        self.tt.clear()
 
 
     def set_fen(self, fen: str) -> bool:
@@ -40,3 +43,9 @@ class Game:
     def get_board(self) -> chess.Board:
         """Получить текущую доску"""
         return self.board
+    
+
+    def get_tt(self) -> TranspositionTable:
+        """Получить транспозиционную позицию"""
+        return self.tt
+    
