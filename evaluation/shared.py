@@ -1,7 +1,11 @@
+"""
+Общие константы для оценок: веса фигур и Piece-Square Tables.
+"""
+
 import chess
 
 
-PIECE_VALUES = {
+VALUES = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
     chess.BISHOP: 330,
@@ -10,7 +14,7 @@ PIECE_VALUES = {
     chess.KING: 0,
 }
 
-PAWN_PST = [
+PAWN_TABLE = [
      0,  0,  0,  0,  0,  0,  0,  0,
     50, 50, 50, 50, 50, 50, 50, 50,
     10, 10, 20, 30, 30, 20, 10, 10,
@@ -21,7 +25,7 @@ PAWN_PST = [
      0,  0,  0,  0,  0,  0,  0,  0,
 ]
 
-KNIGHT_PST = [
+KNIGHT_TABLE = [
     -50,-40,-30,-30,-30,-30,-40,-50,
     -40,-20,  0,  0,  0,  0,-20,-40,
     -30,  0, 10, 15, 15, 10,  0,-30,
@@ -32,7 +36,7 @@ KNIGHT_PST = [
     -50,-40,-30,-30,-30,-30,-40,-50,
 ]
 
-BISHOP_PST = [
+BISHOP_TABLE = [
     -20,-10,-10,-10,-10,-10,-10,-20,
     -10,  0,  0,  0,  0,  0,  0,-10,
     -10,  0, 10, 10, 10, 10,  0,-10,
@@ -43,7 +47,7 @@ BISHOP_PST = [
     -20,-10,-10,-10,-10,-10,-10,-20,
 ]
 
-ROOK_PST = [
+ROOK_TABLE = [
      0,  0,  0,  0,  0,  0,  0,  0,
      5, 10, 10, 10, 10, 10, 10,  5,
     -5,  0,  0,  0,  0,  0,  0, -5,
@@ -54,7 +58,7 @@ ROOK_PST = [
      0,  0,  0,  5,  5,  0,  0,  0,
 ]
 
-QUEEN_PST = [
+QUEEN_TABLE = [
     -20,-10,-10, -5, -5,-10,-10,-20,
     -10,  0,  0,  0,  0,  0,  0,-10,
     -10,  0,  5,  5,  5,  5,  0,-10,
@@ -65,7 +69,7 @@ QUEEN_PST = [
     -20,-10,-10, -5, -5,-10,-10,-20,
 ]
 
-KING_MIDDLEGAME_PST = [
+KING_MG_TABLE = [
     -30,-40,-40,-50,-50,-40,-40,-30,
     -30,-40,-40,-50,-50,-40,-40,-30,
     -30,-40,-40,-50,-50,-40,-40,-30,
@@ -76,7 +80,7 @@ KING_MIDDLEGAME_PST = [
      20, 30, 10,  0,  0, 10, 30, 20,
 ]
 
-KING_ENDGAME_PST = [
+KING_EG_TABLE = [
     -50,-40,-30,-20,-20,-30,-40,-50,
     -30,-20,-10,  0,  0,-10,-20,-30,
     -30,-10, 20, 30, 30, 20,-10,-30,
@@ -88,18 +92,13 @@ KING_ENDGAME_PST = [
 ]
 
 PST = {
-    chess.PAWN: PAWN_PST,
-    chess.KNIGHT: KNIGHT_PST,
-    chess.BISHOP: BISHOP_PST,
-    chess.ROOK: ROOK_PST,
-    chess.QUEEN: QUEEN_PST,
-    chess.KING: KING_MIDDLEGAME_PST,
+    chess.PAWN: PAWN_TABLE,
+    chess.KNIGHT: KNIGHT_TABLE,
+    chess.BISHOP: BISHOP_TABLE,
+    chess.ROOK: ROOK_TABLE,
+    chess.QUEEN: QUEEN_TABLE,
 }
 
 
-def get_pst_value(piece_type: chess.PieceType, square: int, is_white: bool) -> int:
-    table = PST[piece_type]
-    if is_white:
-        return table[square]
-    else:
-        return table[square ^ 56]
+def flip(sq: int) -> int:
+    return sq ^ 56

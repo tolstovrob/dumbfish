@@ -51,7 +51,7 @@ def handle_position(args: list[str], game: Game) -> None:
 
 
 def handle_go(args: list[str], game: Game) -> None:
-    depth = 6
+    depth = 5
     if "depth" in args:
         idx = args.index("depth")
         if idx + 1 < len(args):

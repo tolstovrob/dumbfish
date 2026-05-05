@@ -1,13 +1,11 @@
 """
-Материальная наивная оценка позиции.
-
-Выбираем ход, который приводит к наибольшей сумме материала.
+Наивная материальная оценка.
 """
 
 import chess
 
 
-PIECE_VALUES = {
+VALUES = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
     chess.BISHOP: 330,
@@ -18,9 +16,11 @@ PIECE_VALUES = {
 
 
 def evaluate(board: chess.Board) -> int:
+    """
+    Оценка с точки зрения белых.
+    """
     score = 0
-    for piece in PIECE_VALUES:
-        score += len(board.pieces(piece, chess.WHITE)) * PIECE_VALUES[piece]
-        score -= len(board.pieces(piece, chess.BLACK)) * PIECE_VALUES[piece]
-
+    for piece_type, value in VALUES.items():
+        score += value * board.pieces_count(piece_type, chess.WHITE)
+        score -= value * board.pieces_count(piece_type, chess.BLACK)
     return score
