@@ -129,8 +129,8 @@ def _pawns(board: chess.Board, phase: float) -> int:
             file = chess.square_file(sq)
             rank = chess.square_rank(sq)
 
-            if not (chess.BB_FILES[file - 1] & own if file > 0 else False) and \
-               not (chess.BB_FILES[file + 1] & own if file < 7 else False):
+            if not (chess.BB_FILES[file - 1] & int(own) if file > 0 else False) and \
+               not (chess.BB_FILES[file + 1] & int(own) if file < 7 else False):
                 score += mul * _interpolate(ISOLATED_MG, ISOLATED_EG, phase)
 
             if (int(own) & chess.BB_FILES[file]).bit_count() > 1:
