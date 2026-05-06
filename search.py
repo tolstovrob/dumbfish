@@ -1,5 +1,17 @@
 """
-Модуль поиска с итеративным углублением и альфа-бета отсечением
+Поиск с Principal Variation Search и альфа-бета отсечением.
+
+Реализованы следующие оптимизации:
+  - Principal Variation Search (PVS) - основной алгоритм
+  - Null-move pruning - пропуск хода для быстрого отсечения
+  - Late Move Reductions (LMR) - уменьшение глубины для неперспективных ходов
+  - Futility pruning - отсечение заведомо слабых ходов на малой глубине
+  - Quiescence search - поиск тихих ходов (взятий) до спокойной позиции
+  - Killer heuristic - два лучших тихих хода на каждой глубине
+  - History heuristic - таблица 64x64 для сортировки тихих ходов
+  - Transposition table - кеширование просчитанных позиций
+
+Все оценки с точки зрения игрока, чей сейчас ход.
 """
 
 import chess
@@ -7,7 +19,26 @@ from evaluation import evaluate
 from tt import TranspositionTable, TTFlag
 
 
-MVV_LVA_PRIORITY = {
+# ============================================================
+# Константы
+# ============================================================
+
+MATE_SCORE = 100_000
+MAX_DEPTH = 128
+HISTORY_MAX = 16384
+
+# Таблица history heuristic: history[from_square][to_square]
+# Чем больше значение, тем чаще этот тихий ход вызывал отсечения
+history_table = [[0] * 64 for _ in range(64)]
+
+# Killer moves: два лучших тихих хода для каждой глубины
+# killer_moves[ply][0] - лучший киллер
+# killer_moves[ply][1] - второй киллер
+killer_moves = [[None, None] for _ in range(MAX_DEPTH)]
+
+# Приоритеты фигур для MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
+# Используется для сортировки взятий
+MVV_LVA = {
     chess.PAWN: 1,
     chess.KNIGHT: 2,
     chess.BISHOP: 3,
@@ -17,71 +48,181 @@ MVV_LVA_PRIORITY = {
 }
 
 
-def _order_moves(board: chess.Board, moves: list[chess.Move], 
-                 tt_move: chess.Move | None = None) -> list[chess.Move]:
-    """
-    Сортировка ходов: TT-ход, затем взятия (MVV-LVA), затем тихие ходы.
-    """
-    def score(move: chess.Move) -> int:
-        if tt_move is not None and move == tt_move:
-            return 2_000_000
-        
-        if board.is_capture(move):
-            victim = board.piece_at(move.to_square)
-            attacker = board.piece_at(move.from_square)
-            if victim and attacker:
-                return 1_000_000 + MVV_LVA_PRIORITY[victim.piece_type] * 10 - MVV_LVA_PRIORITY[attacker.piece_type]
-            return 1_000_000
-        return 0
+# ============================================================
+# Вспомогательные функции
+# ============================================================
 
-    return sorted(moves, key=score, reverse=True)
+def _see_capture(board: chess.Board, move: chess.Move) -> int:
+    """
+    Оценка Static Exchange Evaluation для взятия.
+    
+    Оценивает выгодность взятия по принципу MVV-LVA:
+    чем ценнее жертва и чем дешевле атакующий, тем выше оценка.
+    """
+    victim = board.piece_at(move.to_square)
+    attacker = board.piece_at(move.from_square)
+    if victim is None or attacker is None:
+        return 0
+    return MVV_LVA[victim.piece_type] * 10 - MVV_LVA[attacker.piece_type]
+
+
+def _move_value(board: chess.Board, move: chess.Move, 
+                tt_move: chess.Move | None, ply: int) -> int:
+    """
+    Оценка хода для сортировки. Чем выше значение, тем раньше ход будет проверен.
+    
+    Приоритеты (от высшего к низшему):
+      1. Ход из транспозиционной таблицы (10 000 000)
+      2. Взятия по MVV-LVA (1 000 000 + оценка SEE)
+      3. Превращения (900 000 + ценность фигуры)
+      4. Первый киллер (800 000)
+      5. Второй киллер (700 000)
+      6. History heuristic (0..16384)
+    
+    Хороший ход в начале вызывает бета-отсечение и экономит перебор остальных
+    ходов.
+    """
+
+    if tt_move is not None and move == tt_move:
+        return 10_000_000
+
+    if board.is_capture(move):
+        return 1_000_000 + _see_capture(board, move)
+
+    if move.promotion:
+        return 900_000 + MVV_LVA[move.promotion]
+
+    if move == killer_moves[ply][0]:
+        return 800_000
+    if move == killer_moves[ply][1]:
+        return 700_000
+
+    return history_table[move.from_square][move.to_square]
+
+
+def _order_moves(board: chess.Board, moves: list[chess.Move],
+                 tt_move: chess.Move | None, ply: int) -> list[chess.Move]:
+    """
+    Сортировка ходов по убыванию их оценочной ценности.
+    """
+
+    scored = [(_move_value(board, m, tt_move, ply), m) for m in moves]
+    scored.sort(reverse=True, key=lambda x: x[0])
+    return [m for _, m in scored]
 
 
 def _to_side_score(board: chess.Board) -> int:
-    """Оценка с точки зрения того, чей сейчас ход."""
+    """
+    Преобразует оценку из абсолютной (относительно белых) в относительную.
+    """
+
     score = evaluate(board)
     return score if board.turn == chess.WHITE else -score
 
 
-def _quiescence(board: chess.Board, alpha: int, beta: int, tt: TranspositionTable) -> int:
+def _is_quiet(board: chess.Board, move: chess.Move) -> bool:
     """
-    Quiescence search с поддержкой TT.
-    alpha/beta &mdash; с точки зрения игрока, чей ход.
-    Возвращает оценку с его же точки зрения.
+    Проверяет, является ли ход тихим (не взятие, не шах, не превращение).
+    
+    Тихие ходы - кандидаты для киллеров и history heuristic.
     """
+    
+    if board.is_capture(move) or move.promotion:
+        return False
+    board.push(move)
+    in_check = board.is_check()
+    board.pop()
+    return not in_check
+
+
+def _update_killers(move: chess.Move, ply: int) -> None:
+    """
+    Обновляет список киллеров для текущей глубины.
+    """
+
+    if move == killer_moves[ply][0]:
+        return
+    killer_moves[ply][1] = killer_moves[ply][0]
+    killer_moves[ply][0] = move
+
+
+def _update_history(move: chess.Move, depth: int) -> None:
+    """
+    Обновляет history table для тихого хода, вызвавшего отсечение.
+    
+    Бонус пропорционален квадрату глубины (ход на большой глубине ценнее).
+    Используется плавное обновление: val += bonus - val * bonus / MAX
+    чтобы избежать переполнения и резких скачков.
+    """
+
+    bonus = min(depth * depth, 400)
+    val = history_table[move.from_square][move.to_square]
+    history_table[move.from_square][move.to_square] = (
+        val + bonus - (val * bonus) // HISTORY_MAX
+    )
+
+
+# ============================================================
+# Quiescence Search (поиск тихих ходов)
+# ============================================================
+
+def _quiescence(board: chess.Board, alpha: int, beta: int, 
+                tt: TranspositionTable) -> int:
+    """
+    Поиск в глубину только взятий до достижения "спокойной" позиции.
+    
+    Проблема: если остановиться на глубине 0, можно не заметить,
+    что ферзь под боем. Quiescence search решает эту проблему -
+    он продолжает перебирать взятия, пока позиция не стабилизируется.
+    
+    Аргументы:
+      board - текущая позиция
+      alpha - нижняя граница (лучшее, что можем гарантировать)
+      beta  - верхняя граница (лучшее, что соперник нам позволит)
+      tt    - транспозиционная таблица
+    
+    Возвращает оценку с точки зрения игрока, чей ход.
+    """
+
     if board.is_game_over():
         return _to_side_score(board)
-    
+
     hash_val = tt.get_hash(board)
     tt_entry = tt.probe(hash_val)
-    
     if tt_entry is not None:
         if tt_entry.flag == TTFlag.EXACT:
             return tt_entry.score
-        elif tt_entry.flag == TTFlag.ALPHA and tt_entry.score <= alpha:
+        if tt_entry.flag == TTFlag.ALPHA and tt_entry.score <= alpha:
             return tt_entry.score
-        elif tt_entry.flag == TTFlag.BETA and tt_entry.score >= beta:
+        if tt_entry.flag == TTFlag.BETA and tt_entry.score >= beta:
             return tt_entry.score
+
+    stand_pat = _to_side_score(board)
+    if stand_pat >= beta:
+        tt.store(hash_val, 0, stand_pat, TTFlag.BETA, None)
+        return beta
+    if stand_pat > alpha:
+        alpha = stand_pat
 
     in_check = board.is_check()
-
-    if not in_check:
-        stand_pat = _to_side_score(board)
-        if stand_pat >= beta:
-            tt.store(hash_val, 0, stand_pat, TTFlag.BETA, None)
-            return beta
-        if stand_pat > alpha:
-            alpha = stand_pat
-
     if in_check:
         moves = list(board.legal_moves)
     else:
-        moves = [m for m in board.legal_moves if board.is_capture(m)]
+        moves = [m for m in board.legal_moves 
+                 if board.is_capture(m) or m.promotion]
+
+    # Delta pruning: отсекаем взятия, которые заведомо не улучшат alpha
+    # Даже самое лучшее взятие не даст больше +900 (ферзь)
+    # Если stand_pat + ценность_взятия + 200 < alpha - не смотрим
+    if not in_check:
+        delta = 200
+        moves = [m for m in moves
+                 if stand_pat + _see_material(board, m) + delta >= alpha]
 
     tt_best_move = tt_entry.best_move if tt_entry else None
-    moves = _order_moves(board, moves, tt_move=tt_best_move)
+    moves = _order_moves(board, moves, tt_best_move, 0)
 
-    best_score = -100_000
+    best_score = stand_pat
     best_move = None
 
     for move in moves:
@@ -94,75 +235,157 @@ def _quiescence(board: chess.Board, alpha: int, beta: int, tt: TranspositionTabl
             best_move = move
 
         if score >= beta:
-            break
-        
+            if not board.is_capture(move):
+                _update_killers(move, 0)
+            tt.store(hash_val, 0, score, TTFlag.BETA, move)
+            return beta
+
         if score > alpha:
             alpha = score
 
-    flag = TTFlag.EXACT
-    if best_score <= alpha:
-        flag = TTFlag.ALPHA
-    elif best_score >= beta:
-        flag = TTFlag.BETA
-    
+    flag = TTFlag.EXACT if best_score > stand_pat else TTFlag.ALPHA
     tt.store(hash_val, 0, best_score, flag, best_move)
-    
     return best_score
 
 
-def _negamax(
-    board: chess.Board,
-    depth: int,
-    alpha: int,
-    beta: int,
-    tt: TranspositionTable,
-    ply: int = 0,
-) -> tuple[int, chess.Move | None]:
+def _see_material(board: chess.Board, move: chess.Move) -> int:
     """
-    Negamax с альфа-бета и TT.
-    alpha/beta и результат &mdash; с точки зрения того, чей ход.
+    Приблизительная материальная ценность хода для delta pruning.
+    Возвращает 0 для тихих ходов, ценность жертвы для взятий.
     """
+
+    if not board.is_capture(move) and not move.promotion:
+        return 0
+    victim = board.piece_at(move.to_square)
+    if victim:
+        return MVV_LVA[victim.piece_type] * 100
+    return 0
+
+
+# ============================================================
+# Principal Variation Search
+# ============================================================
+
+def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
+               tt: TranspositionTable, ply: int, can_null: bool
+               ) -> tuple[int, chess.Move | None]:
+    """
+    Principal Variation Search с альфа-бета отсечением.
+    
+    PVS - улучшенная версия альфа-бета:
+      - Первый ход ищется с полным окном [alpha, beta]
+      - Остальные ходы - с нулевым окном [alpha, alpha+1]
+      - Если нулевое окно даёт улучшение - переискиваем с полным окном
+    
+    Это даёт больше отсечений, так как narrow window увеличивает
+    вероятность fail-high.
+    
+    Аргументы:
+      board    - текущая позиция
+      depth    - оставшаяся глубина поиска
+      alpha    - нижняя граница
+      beta     - верхняя граница
+      tt       - транспозиционная таблица
+      ply      - текущая глубина от корня (для киллеров)
+      can_null - можно ли применять null-move pruning
+    
+    Возвращает кортеж с оценкой и лучшим ходом.
+    """
+
     if board.is_game_over():
         return _to_side_score(board), None
 
     hash_val = tt.get_hash(board)
     tt_entry = tt.probe(hash_val)
-    
-    if (tt_entry is not None and 
-        tt_entry.depth >= depth and
-        tt_entry.hash == hash_val):
-        
+
+    if tt_entry is not None and tt_entry.depth >= depth:
         if tt_entry.flag == TTFlag.EXACT:
             return tt_entry.score, tt_entry.best_move
-        elif tt_entry.flag == TTFlag.ALPHA and tt_entry.score <= alpha:
+        if tt_entry.flag == TTFlag.ALPHA and tt_entry.score <= alpha:
             return tt_entry.score, tt_entry.best_move
-        elif tt_entry.flag == TTFlag.BETA and tt_entry.score >= beta:
+        if tt_entry.flag == TTFlag.BETA and tt_entry.score >= beta:
             return tt_entry.score, tt_entry.best_move
 
-    if depth == 0:
+    if depth <= 0:
         score = _quiescence(board, alpha, beta, tt)
         return score, None
 
-    best_move = None
-    best_score = -100_000
-    original_alpha = alpha
+    # Null-move pruning: даём сопернику бесплатный ход
+    # Если даже с лишним ходом он не достигает beta - отсекаем всю ветку
+    # Не применяем в цугцвангах (can_null) и при шахе
+    if can_null and depth >= 3 and not board.is_check():
+        R = 3 + depth // 6
+        board.push(chess.Move.null())
+        score, _ = _pv_search(board, depth - R - 1, -beta, -beta + 1, 
+                              tt, ply + 1, False)
+        board.pop()
+        score = -score
+        if score >= beta:
+            return beta, None
+
+    # Futility pruning: на малой глубине отсекаем заведомо плохие ходы
+    # Если даже в лучшем случае не дотянем до alpha - выходим
+    if depth <= 3 and not board.is_check():
+        stand_pat = _to_side_score(board)
+        if stand_pat + 200 * depth <= alpha:
+            score = _quiescence(board, alpha, beta, tt)
+            return score, None
 
     tt_best_move = tt_entry.best_move if tt_entry else None
-    moves = _order_moves(board, list(board.legal_moves), tt_move=tt_best_move)
+    moves = list(board.legal_moves)
 
-    for move in moves:
+    if not moves:
+        if board.is_check():
+            return -MATE_SCORE + ply, None
+        return 0, None
+
+    moves = _order_moves(board, moves, tt_best_move, ply)
+
+    best_move = moves[0]
+    best_score = -MATE_SCORE
+    original_alpha = alpha
+    moves_searched = 0
+
+    for i, move in enumerate(moves):
         board.push(move)
-        score, _ = _negamax(board, depth - 1, -beta, -alpha, tt, ply + 1)
-        score = -score
+
+        # Late Move Reductions: для ходов после 4-го уменьшаем глубину
+        if moves_searched >= 4 and depth >= 3 and _is_quiet(board, move):
+            R = 1 + depth // 4 + moves_searched // 8
+            new_depth = max(1, depth - R)
+            score, _ = _pv_search(board, new_depth, -alpha - 1, -alpha, 
+                                  tt, ply + 1, True)
+            score = -score
+            if score > alpha:
+                score, _ = _pv_search(board, depth - 1, -beta, -alpha, 
+                                      tt, ply + 1, True)
+                score = -score
+        else:
+            if moves_searched == 0:
+                score, _ = _pv_search(board, depth - 1, -beta, -alpha, 
+                                      tt, ply + 1, True)
+            else:
+                score, _ = _pv_search(board, depth - 1, -alpha - 1, -alpha, 
+                                      tt, ply + 1, True)
+                if score > alpha and score < beta:
+                    score, _ = _pv_search(board, depth - 1, -beta, -alpha, 
+                                          tt, ply + 1, True)
+            score = -score
+
         board.pop()
+        moves_searched += 1
 
         if score > best_score:
             best_score = score
             best_move = move
 
-        alpha = max(alpha, score)
-        if alpha >= beta:
-            break
+        if score > alpha:
+            alpha = score
+            if score >= beta:
+                if _is_quiet(board, move):
+                    _update_killers(move, ply)
+                    _update_history(move, depth)
+                break
 
     if best_score <= original_alpha:
         flag = TTFlag.ALPHA
@@ -172,21 +395,36 @@ def _negamax(
         flag = TTFlag.EXACT
 
     tt.store(hash_val, depth, best_score, flag, best_move)
-
     return best_score, best_move
 
 
+# ============================================================
+# Итеративное углубление
+# ============================================================
 
-def search(board: chess.Board, max_depth: int, tt: TranspositionTable) -> chess.Move | None:
+def search(board: chess.Board, max_depth: int, 
+           tt: TranspositionTable) -> chess.Move | None:
     """
-    Итеративное углубление от 1 до max_depth.
-    Возвращает лучший ход.
+    Основная функция поиска с итеративным углублением.
+    
+    Аргументы:
+      board     - текущая позиция
+      max_depth - максимальная глубина
+      tt        - транспозиционная таблица
+    
+    Возвращает лучший найденный ход.
     """
+
+    for i in range(MAX_DEPTH):
+        killer_moves[i][0] = None
+        killer_moves[i][1] = None
+
     best_move = None
 
     for depth in range(1, max_depth + 1):
-        _, move = _negamax(board, depth, -100_000, 100_000, tt)
+        _, move = _pv_search(board, depth, -MATE_SCORE, MATE_SCORE, 
+                                 tt, 0, True)
         if move is not None:
             best_move = move
-        
+
     return best_move
