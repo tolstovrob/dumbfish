@@ -60,8 +60,10 @@ def handle_go(args: list[str], game: Game) -> None:
             except ValueError:
                 pass
 
-    best_move = search(game.get_board(), depth, game.get_tt())
+    if "infinite" in args:
+        return
 
+    best_move = search(game.get_board(), depth, game.get_tt())
     if best_move is not None:
         print(f"bestmove {best_move}")
     else:
