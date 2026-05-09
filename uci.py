@@ -3,6 +3,7 @@ UCI-протокол движка
 """
 
 import sys
+import chess
 from config import CONFIG
 from game import Game
 from search import search
@@ -10,6 +11,64 @@ from search import search
 
 class QuitException(Exception):
     """Сигнал завершить UCI-цикл."""
+
+
+def _format_score(score: int) -> str:
+    """
+    Форматирует оценку в UCI-формат.
+    
+    Для матовых оценок: mate N (где N - ходы до мата)
+    Для обычных оценок: cp S (сантипешки, оценка в centipawns)
+    
+    Внутренняя оценка: положительная = хорошо для белых
+    UCI: положительная = хорошо для текущего игрока
+    """
+    MATE_THRESHOLD = 100_000
+
+    if abs(score) >= MATE_THRESHOLD:
+        if score > 0:
+            mate_in = (100_000 - score + 1) // 2
+        else:
+            mate_in = (100_000 + score + 1) // 2
+        return f"mate {mate_in}"
+    else:
+        return f"cp {score}"
+
+
+def _format_pv(pv_line: list) -> str:
+    """Форматирует PV линию в UCI-строку."""
+    if not pv_line:
+        return ""
+    return " ".join(move.uci() if hasattr(move, 'uci') else str(move) 
+                    for move in pv_line)
+
+
+def _print_info(info: dict, board_turn: chess.Color) -> None:
+    """
+    Выводит info-строку в UCI-формате.
+    
+    Формат: info depth N score [cp S | mate N] nodes N time N nps N pv M1 M2 ...
+    
+    Оценка score преобразуется: внутренняя всегда с точки зрения белых,
+    UCI требует с точки зрения текущего игрока.
+    """
+    score = info['score']
+    if board_turn == chess.BLACK:
+        score = -score
+
+    parts = [
+        f"depth {info['depth']}",
+        f"score {_format_score(score)}",
+        f"nodes {info['nodes']}",
+        f"time {info['time']}",
+        f"nps {info['nps']}",
+    ]
+
+    pv_str = _format_pv(info.get('pv', []))
+    if pv_str:
+        parts.append(f"pv {pv_str}")
+
+    print("info " + " ".join(parts))
 
 
 def handle_uci(args: list[str], game: Game) -> None:
@@ -51,7 +110,7 @@ def handle_position(args: list[str], game: Game) -> None:
 
 
 def handle_go(args: list[str], game: Game) -> None:
-    depth = 8
+    depth = 16
     if "depth" in args:
         idx = args.index("depth")
         if idx + 1 < len(args):
@@ -63,7 +122,11 @@ def handle_go(args: list[str], game: Game) -> None:
     if "infinite" in args:
         return
 
-    best_move = search(game.get_board(), depth, game.get_tt())
+    best_move, info_list = search(game.get_board(), depth, game.get_tt())
+    
+    for info in info_list:
+        _print_info(info, game.get_board().turn)
+    
     if best_move is not None:
         print(f"bestmove {best_move}")
     else:

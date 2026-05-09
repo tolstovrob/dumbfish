@@ -15,6 +15,7 @@
 """
 
 import chess
+import time
 from evaluation import evaluate
 from tt import TranspositionTable, TTFlag
 
@@ -46,6 +47,23 @@ MVV_LVA = {
     chess.QUEEN: 5,
     chess.KING: 6,
 }
+
+_nodes = 0
+_start_time = 0.0
+
+
+def _reset_stats():
+    """Сброс счётчиков перед новым поиском."""
+    global _nodes, _start_time
+    _nodes = 0
+    _start_time = time.time()
+
+
+def _get_stats():
+    """Получение текущей статистики."""
+    elapsed = max(time.time() - _start_time, 0.001)
+    nps = int(_nodes / elapsed)
+    return _nodes, int(elapsed * 1000), nps
 
 
 # ============================================================
@@ -184,6 +202,9 @@ def _quiescence(board: chess.Board, alpha: int, beta: int,
     Возвращает оценку с точки зрения игрока, чей ход.
     """
 
+    global _nodes
+    _nodes += 1
+
     if board.is_game_over():
         return _to_side_score(board)
 
@@ -267,7 +288,8 @@ def _see_material(board: chess.Board, move: chess.Move) -> int:
 # ============================================================
 
 def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
-               tt: TranspositionTable, ply: int, can_null: bool
+               tt: TranspositionTable, ply: int, can_null: bool,
+               pv_line: list[chess.Move] | None = None
                ) -> tuple[int, chess.Move | None]:
     """
     Principal Variation Search с альфа-бета отсечением.
@@ -288,9 +310,13 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
       tt       - транспозиционная таблица
       ply      - текущая глубина от корня (для киллеров)
       can_null - можно ли применять null-move pruning
+      pv_line  - список для сбора PV (изменяется на месте)
     
     Возвращает кортеж с оценкой и лучшим ходом.
     """
+
+    global _nodes
+    _nodes += 1
 
     if board.is_game_over():
         return _to_side_score(board), None
@@ -346,6 +372,9 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
     original_alpha = alpha
     moves_searched = 0
 
+    # Локальный PV для этого узла
+    local_pv = []
+
     for i, move in enumerate(moves):
         board.push(move)
 
@@ -353,23 +382,27 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
         if moves_searched >= 4 and depth >= 3 and _is_quiet(board, move):
             R = 1 + depth // 4 + moves_searched // 8
             new_depth = max(1, depth - R)
+            child_pv = []
             score, _ = _pv_search(board, new_depth, -alpha - 1, -alpha, 
-                                  tt, ply + 1, True)
+                                  tt, ply + 1, True, child_pv)
             score = -score
             if score > alpha:
+                child_pv = []
                 score, _ = _pv_search(board, depth - 1, -beta, -alpha, 
-                                      tt, ply + 1, True)
+                                      tt, ply + 1, True, child_pv)
                 score = -score
         else:
+            child_pv = []
             if moves_searched == 0:
                 score, _ = _pv_search(board, depth - 1, -beta, -alpha, 
-                                      tt, ply + 1, True)
+                                      tt, ply + 1, True, child_pv)
             else:
                 score, _ = _pv_search(board, depth - 1, -alpha - 1, -alpha, 
-                                      tt, ply + 1, True)
+                                      tt, ply + 1, True, child_pv)
                 if score > alpha and score < beta:
+                    child_pv = []
                     score, _ = _pv_search(board, depth - 1, -beta, -alpha, 
-                                          tt, ply + 1, True)
+                                          tt, ply + 1, True, child_pv)
             score = -score
 
         board.pop()
@@ -378,6 +411,8 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
         if score > best_score:
             best_score = score
             best_move = move
+            # Собираем PV: текущий ход + дочерний PV
+            local_pv = [move] + child_pv
 
         if score > alpha:
             alpha = score
@@ -386,6 +421,11 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
                     _update_killers(move, ply)
                     _update_history(move, depth)
                 break
+
+    # Передаём PV наверх, если он есть в pv_line
+    if pv_line is not None and local_pv:
+        pv_line.clear()
+        pv_line.extend(local_pv)
 
     if best_score <= original_alpha:
         flag = TTFlag.ALPHA
@@ -403,7 +443,7 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
 # ============================================================
 
 def search(board: chess.Board, max_depth: int, 
-           tt: TranspositionTable) -> chess.Move | None:
+           tt: TranspositionTable) -> tuple[chess.Move | None, list[dict]]:
     """
     Основная функция поиска с итеративным углублением.
     
@@ -412,19 +452,38 @@ def search(board: chess.Board, max_depth: int,
       max_depth - максимальная глубина
       tt        - транспозиционная таблица
     
-    Возвращает лучший найденный ход.
+    Возвращает кортеж (лучший ход, список info-словарей для каждой итерации).
+    Каждый info-словарь содержит ключи:
+      - depth, score, nodes, time, nps, pv
     """
+
+    _reset_stats()
 
     for i in range(MAX_DEPTH):
         killer_moves[i][0] = None
         killer_moves[i][1] = None
 
     best_move = None
+    info_list = []
 
     for depth in range(1, max_depth + 1):
+        pv_line = []
         _, move = _pv_search(board, depth, -MATE_SCORE, MATE_SCORE, 
-                                 tt, 0, True)
+                             tt, 0, True, pv_line)
         if move is not None:
             best_move = move
 
-    return best_move
+        nodes, time_ms, nps = _get_stats()
+
+        info = {
+            'depth': depth,
+            'score': _pv_search(board, depth, -MATE_SCORE, MATE_SCORE, 
+                               tt, 0, True)[0],
+            'nodes': nodes,
+            'time': time_ms,
+            'nps': nps,
+            'pv': pv_line if pv_line else [best_move] if best_move else [],
+        }
+        info_list.append(info)
+
+    return best_move, info_list
