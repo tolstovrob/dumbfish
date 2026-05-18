@@ -478,7 +478,7 @@ def search(board: chess.Board, max_depth: int,
         info = {
             'depth': depth,
             'score': _pv_search(board, depth, -MATE_SCORE, MATE_SCORE, 
-                               tt, 0, True)[0],
+                                tt, 0, True)[0],
             'nodes': nodes,
             'time': time_ms,
             'nps': nps,
