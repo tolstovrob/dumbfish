@@ -20,25 +20,17 @@ from evaluation import evaluate
 from tt import TranspositionTable, TTFlag
 
 
-# ============================================================
-# Константы
-# ============================================================
-
 MATE_SCORE = 100_000
 MAX_DEPTH = 128
 HISTORY_MAX = 16384
 
-# Таблица history heuristic: history[from_square][to_square]
-# Чем больше значение, тем чаще этот тихий ход вызывал отсечения
+# Эвристика истории ходов
 history_table = [[0] * 64 for _ in range(64)]
 
-# Killer moves: два лучших тихих хода для каждой глубины
-# killer_moves[ply][0] - лучший киллер
-# killer_moves[ply][1] - второй киллер
+# Эвристика тихих ходов
 killer_moves = [[None, None] for _ in range(MAX_DEPTH)]
 
-# Приоритеты фигур для MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
-# Используется для сортировки взятий
+# Приоритеты фигур MVV-LVA
 MVV_LVA = {
     chess.PAWN: 1,
     chess.KNIGHT: 2,
@@ -66,10 +58,6 @@ def _get_stats():
     return _nodes, int(elapsed * 1000), nps
 
 
-# ============================================================
-# Вспомогательные функции
-# ============================================================
-
 def _see_capture(board: chess.Board, move: chess.Move) -> int:
     """
     Оценка Static Exchange Evaluation для взятия.
@@ -93,8 +81,8 @@ def _move_value(board: chess.Board, move: chess.Move,
       1. Ход из транспозиционной таблицы (10 000 000)
       2. Взятия по MVV-LVA (1 000 000 + оценка SEE)
       3. Превращения (900 000 + ценность фигуры)
-      4. Первый киллер (800 000)
-      5. Второй киллер (700 000)
+      4. Первый тихий ход (800 000)
+      5. Второй тихий ход (700 000)
       6. History heuristic (0..16384)
     
     Хороший ход в начале вызывает бета-отсечение и экономит перебор остальных
@@ -155,7 +143,7 @@ def _is_quiet(board: chess.Board, move: chess.Move) -> bool:
 
 def _update_killers(move: chess.Move, ply: int) -> None:
     """
-    Обновляет список киллеров для текущей глубины.
+    Обновляет эвристику тихих ходов для текущей глубины.
     """
 
     if move == killer_moves[ply][0]:
@@ -166,7 +154,7 @@ def _update_killers(move: chess.Move, ply: int) -> None:
 
 def _update_history(move: chess.Move, depth: int) -> None:
     """
-    Обновляет history table для тихого хода, вызвавшего отсечение.
+    Обновляет эвристику истории ходов для тихого хода, вызвавшего отсечение.
     
     Бонус пропорционален квадрату глубины (ход на большой глубине ценнее).
     Используется плавное обновление: val += bonus - val * bonus / MAX
@@ -180,18 +168,10 @@ def _update_history(move: chess.Move, depth: int) -> None:
     )
 
 
-# ============================================================
-# Quiescence Search (поиск тихих ходов)
-# ============================================================
-
 def _quiescence(board: chess.Board, alpha: int, beta: int, 
                 tt: TranspositionTable) -> int:
     """
     Поиск в глубину только взятий до достижения "спокойной" позиции.
-    
-    Проблема: если остановиться на глубине 0, можно не заметить,
-    что ферзь под боем. Quiescence search решает эту проблему -
-    он продолжает перебирать взятия, пока позиция не стабилизируется.
     
     Аргументы:
       board - текущая позиция
@@ -232,9 +212,6 @@ def _quiescence(board: chess.Board, alpha: int, beta: int,
         moves = [m for m in board.legal_moves 
                  if board.is_capture(m) or m.promotion]
 
-    # Delta pruning: отсекаем взятия, которые заведомо не улучшат alpha
-    # Даже самое лучшее взятие не даст больше +900 (ферзь)
-    # Если stand_pat + ценность_взятия + 200 < alpha - не смотрим
     if not in_check:
         delta = 200
         moves = [m for m in moves
@@ -283,24 +260,12 @@ def _see_material(board: chess.Board, move: chess.Move) -> int:
     return 0
 
 
-# ============================================================
-# Principal Variation Search
-# ============================================================
-
 def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
                tt: TranspositionTable, ply: int, can_null: bool,
                pv_line: list[chess.Move] | None = None
                ) -> tuple[int, chess.Move | None]:
     """
     Principal Variation Search с альфа-бета отсечением.
-    
-    PVS - улучшенная версия альфа-бета:
-      - Первый ход ищется с полным окном [alpha, beta]
-      - Остальные ходы - с нулевым окном [alpha, alpha+1]
-      - Если нулевое окно даёт улучшение - переискиваем с полным окном
-    
-    Это даёт больше отсечений, так как narrow window увеличивает
-    вероятность fail-high.
     
     Аргументы:
       board    - текущая позиция
@@ -336,9 +301,7 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
         score = _quiescence(board, alpha, beta, tt)
         return score, None
 
-    # Null-move pruning: даём сопернику бесплатный ход
-    # Если даже с лишним ходом он не достигает beta - отсекаем всю ветку
-    # Не применяем в цугцвангах (can_null) и при шахе
+    # Null-move pruning
     if can_null and depth >= 3 and not board.is_check():
         R = 3 + depth // 6
         board.push(chess.Move.null())
@@ -349,8 +312,7 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
         if score >= beta:
             return beta, None
 
-    # Futility pruning: на малой глубине отсекаем заведомо плохие ходы
-    # Если даже в лучшем случае не дотянем до alpha - выходим
+    # Futility pruning
     if depth <= 3 and not board.is_check():
         stand_pat = _to_side_score(board)
         if stand_pat + 200 * depth <= alpha:
@@ -372,13 +334,12 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
     original_alpha = alpha
     moves_searched = 0
 
-    # Локальный PV для этого узла
     local_pv = []
 
     for i, move in enumerate(moves):
         board.push(move)
 
-        # Late Move Reductions: для ходов после 4-го уменьшаем глубину
+        # Late Move Reductions
         if moves_searched >= 4 and depth >= 3 and _is_quiet(board, move):
             R = 1 + depth // 4 + moves_searched // 8
             new_depth = max(1, depth - R)
@@ -411,7 +372,6 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
         if score > best_score:
             best_score = score
             best_move = move
-            # Собираем PV: текущий ход + дочерний PV
             local_pv = [move] + child_pv
 
         if score > alpha:
@@ -422,7 +382,6 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
                     _update_history(move, depth)
                 break
 
-    # Передаём PV наверх, если он есть в pv_line
     if pv_line is not None and local_pv:
         pv_line.clear()
         pv_line.extend(local_pv)
@@ -437,10 +396,6 @@ def _pv_search(board: chess.Board, depth: int, alpha: int, beta: int,
     tt.store(hash_val, depth, best_score, flag, best_move)
     return best_score, best_move
 
-
-# ============================================================
-# Итеративное углубление
-# ============================================================
 
 def search(board: chess.Board, max_depth: int, 
            tt: TranspositionTable) -> tuple[chess.Move | None, list[dict]]:
