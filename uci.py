@@ -110,7 +110,7 @@ def handle_position(args: list[str], game: Game) -> None:
 
 
 def handle_go(args: list[str], game: Game) -> None:
-    depth = 16
+    depth = CONFIG.DEFAULT_DEPTH
     if "depth" in args:
         idx = args.index("depth")
         if idx + 1 < len(args):

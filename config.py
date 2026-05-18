@@ -8,6 +8,7 @@ from dataclasses import dataclass
 class Config:
     NAME = "Dumbfish"
     AUTHOR = "tolstovrob"
+    DEFAULT_DEPTH = 6
 
 
 CONFIG = Config()
