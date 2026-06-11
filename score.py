@@ -24,7 +24,7 @@ def _flip(sq: int) -> int:
     return sq ^ 56
 
 
-def _calculate_phase(board: chess.Board) -> tuple[float, float, float]:
+def calculate_phase(board: chess.Board) -> tuple[float, float, float]:
     """
     Вычисление трёх фаз игры.
     Возвращает (weight_opening, weight_middlegame, weight_endgame)
@@ -58,11 +58,10 @@ def _interpolate(
     opening: int,
     middlegame: int,
     endgame: int,
-    w_open: float,
-    w_mid: float,
-    w_end: float,
+    weights: tuple[float, float, float],
 ) -> int:
     """Трёхфазная интерполяция."""
+    w_open, w_mid, w_end = weights
     return int(opening * w_open + middlegame * w_mid + endgame * w_end)
 
 
@@ -75,53 +74,42 @@ def _terminal_score(board: chess.Board) -> int | None:
     return None
 
 
-def _pst_score(board: chess.Board) -> int:
+def _pst_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
     """Оценка PST с трёхфазной интерполяцией."""
-    w_open, w_mid, w_end = _calculate_phase(board)
     score = 0
     for pt, (opening, middlegame, endgame) in PST_PHASE.items():
         if pt == chess.KING:
             continue
         for sq in board.pieces(pt, chess.WHITE):
-            score += _interpolate(
-                opening[sq], middlegame[sq], endgame[sq], w_open, w_mid, w_end
-            )
+            score += _interpolate(opening[sq], middlegame[sq], endgame[sq], weights)
         for sq in board.pieces(pt, chess.BLACK):
             score -= _interpolate(
                 opening[_flip(sq)],
                 middlegame[_flip(sq)],
                 endgame[_flip(sq)],
-                w_open,
-                w_mid,
-                w_end,
+                weights,
             )
     return score
 
 
-def _king_score(board: chess.Board) -> int:
+def _king_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
     """Оценка короля."""
-    w_open, w_mid, w_end = _calculate_phase(board)
     score = 0
     opening, middlegame, endgame = PST_PHASE[chess.KING]
     for sq in board.pieces(chess.KING, chess.WHITE):
-        score += _interpolate(
-            opening[sq], middlegame[sq], endgame[sq], w_open, w_mid, w_end
-        )
+        score += _interpolate(opening[sq], middlegame[sq], endgame[sq], weights)
     for sq in board.pieces(chess.KING, chess.BLACK):
         score -= _interpolate(
             opening[_flip(sq)],
             middlegame[_flip(sq)],
             endgame[_flip(sq)],
-            w_open,
-            w_mid,
-            w_end,
+            weights,
         )
     return score
 
 
-def _mobility_score(board: chess.Board) -> int:
+def _mobility_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
     """Оценка мобильности."""
-    w_open, w_mid, w_end = _calculate_phase(board)
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -139,15 +127,12 @@ def _mobility_score(board: chess.Board) -> int:
                     (b for c, b in reversed(MOBILITY_ENDGAME[pt]) if count >= c), 0
                 )
 
-                score += mul * _interpolate(
-                    open_bonus, mid_bonus, end_bonus, w_open, w_mid, w_end
-                )
+                score += mul * _interpolate(open_bonus, mid_bonus, end_bonus, weights)
     return score
 
 
-def _pawns_score(board: chess.Board) -> int:
+def _pawns_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
     """Оценка пешечной структуры с трёхфазной интерполяцией."""
-    w_open, w_mid, w_end = _calculate_phase(board)
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -163,13 +148,11 @@ def _pawns_score(board: chess.Board) -> int:
             right_ok = file < 7 and (chess.BB_FILES[file + 1] & own_mask)
             if not left_ok and not right_ok:
                 score += mul * _interpolate(
-                    ISOLATED[0], ISOLATED[1], ISOLATED[2], w_open, w_mid, w_end
+                    ISOLATED[0], ISOLATED[1], ISOLATED[2], weights
                 )
 
             if (own_mask & chess.BB_FILES[file]).bit_count() > 1:
-                score += mul * _interpolate(
-                    DOUBLED[0], DOUBLED[1], DOUBLED[2], w_open, w_mid, w_end
-                )
+                score += mul * _interpolate(DOUBLED[0], DOUBLED[1], DOUBLED[2], weights)
 
             is_passed = True
             if color == chess.WHITE:
@@ -215,20 +198,18 @@ def _pawns_score(board: chess.Board) -> int:
                     bonus,
                     int(bonus * PASSED_BONUS_MG),
                     int(bonus * PASSED_BONUS_EG),
-                    w_open,
-                    w_mid,
-                    w_end,
+                    weights,
                 )
 
     return score
 
 
-def _king_safety_score(board: chess.Board, phase: float) -> int:
+def _king_safety_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
     """Оценка безопасности короля."""
-    if phase < SAFETY_PHASE_MIN:  # TODO: ???
+    w_open, w_mid, w_end = weights
+    if w_mid + w_end < SAFETY_PHASE_MIN:
         return 0
 
-    w_open, w_mid, w_end = _calculate_phase(board)
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -262,10 +243,15 @@ def _king_safety_score(board: chess.Board, phase: float) -> int:
             int(shield_val * SHIELD_PHASE_WEIGHTS[0]),
             int(shield_val * SHIELD_PHASE_WEIGHTS[1]),
             int(shield_val * SHIELD_PHASE_WEIGHTS[2]),
-            w_open,
-            w_mid,
-            w_end,
+            weights,
         )
+
+        if w_open > w_mid:
+            phase_idx = 0
+        elif w_end > w_mid:
+            phase_idx = 2
+        else:
+            phase_idx = 1
 
         penalty = 0
         for f in [file - 1, file, file + 1]:
@@ -275,22 +261,17 @@ def _king_safety_score(board: chess.Board, phase: float) -> int:
                     int(board.pieces(chess.PAWN, not color)) & chess.BB_FILES[f]
                 )
                 if not own_pawns:
-                    penalty += OPEN_FILE_PENALTY[
-                        0 if w_open > w_mid else (2 if w_end > w_mid else 1)
-                    ]
+                    penalty += OPEN_FILE_PENALTY[phase_idx]
                     if not enemy_pawns:
-                        penalty += HALF_OPEN_PENALTY[
-                            0 if w_open > w_mid else (2 if w_end > w_mid else 1)
-                        ]
+                        penalty += HALF_OPEN_PENALTY[phase_idx]
 
-        score += mul * _interpolate(penalty, penalty, penalty, w_open, w_mid, w_end)
+        score += mul * _interpolate(penalty, penalty, penalty, weights)
 
     return score
 
 
-def _bishop_pair_score(board: chess.Board) -> int:
+def _bishop_pair_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
     """Оценка за пару слонов."""
-    w_open, w_mid, w_end = _calculate_phase(board)
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -301,14 +282,13 @@ def _bishop_pair_score(board: chess.Board) -> int:
                 chess.square_file(sq2) + chess.square_rank(sq2)
             ) % 2:
                 score += mul * _interpolate(
-                    BISHOP_PAIR[0], BISHOP_PAIR[1], BISHOP_PAIR[2], w_open, w_mid, w_end
+                    BISHOP_PAIR[0], BISHOP_PAIR[1], BISHOP_PAIR[2], weights
                 )
     return score
 
 
-def _rooks_score(board: chess.Board) -> int:
+def _rooks_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
     """Оценка ладей."""
-    w_open, w_mid, w_end = _calculate_phase(board)
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -320,29 +300,26 @@ def _rooks_score(board: chess.Board) -> int:
             if not own:
                 if not enemy:
                     score += mul * _interpolate(
-                        ROOK_OPEN[0], ROOK_OPEN[1], ROOK_OPEN[2], w_open, w_mid, w_end
+                        ROOK_OPEN[0], ROOK_OPEN[1], ROOK_OPEN[2], weights
                     )
                 else:
                     score += mul * _interpolate(
                         ROOK_SEMIOPEN[0],
                         ROOK_SEMIOPEN[1],
                         ROOK_SEMIOPEN[2],
-                        w_open,
-                        w_mid,
-                        w_end,
+                        weights,
                     )
             if (color == chess.WHITE and rank == 6) or (
                 color == chess.BLACK and rank == 1
             ):
                 score += mul * _interpolate(
-                    ROOK_7TH[0], ROOK_7TH[1], ROOK_7TH[2], w_open, w_mid, w_end
+                    ROOK_7TH[0], ROOK_7TH[1], ROOK_7TH[2], weights
                 )
     return score
 
 
-def _knights_score(board: chess.Board) -> int:
+def _knights_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
     """Оценка коней на форпосте."""
-    w_open, w_mid, w_end = _calculate_phase(board)
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -371,7 +348,7 @@ def _knights_score(board: chess.Board) -> int:
                                 break
                     if not attacked:
                         score += mul * _interpolate(
-                            OUTPOST[0], OUTPOST[1], OUTPOST[2], w_open, w_mid, w_end
+                            OUTPOST[0], OUTPOST[1], OUTPOST[2], weights
                         )
     return score
 
@@ -384,21 +361,20 @@ def evaluate(board: chess.Board) -> int:
     if term is not None:
         return term
 
-    score = 0
+    weights = calculate_phase(board)
 
+    score = 0
     for pt, val in VALUES.items():
         score += val * len(board.pieces(pt, chess.WHITE))
         score -= val * len(board.pieces(pt, chess.BLACK))
 
-    phase = _calculate_phase(board)[1]
-
-    score += _pst_score(board)
-    score += _king_score(board)
-    score += _mobility_score(board)
-    score += _pawns_score(board)
-    score += _king_safety_score(board, phase)
-    score += _bishop_pair_score(board)
-    score += _rooks_score(board)
-    score += _knights_score(board)
+    score += _pst_score(board, weights)
+    score += _king_score(board, weights)
+    score += _mobility_score(board, weights)
+    score += _pawns_score(board, weights)
+    score += _king_safety_score(board, weights)
+    score += _bishop_pair_score(board, weights)
+    score += _rooks_score(board, weights)
+    score += _knights_score(board, weights)
 
     return score
