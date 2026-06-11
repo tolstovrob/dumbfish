@@ -29,27 +29,34 @@ def calculate_phase(board: chess.Board) -> tuple[float, float, float]:
     Вычисление трёх фаз игры.
     Возвращает (weight_opening, weight_middlegame, weight_endgame)
     """
-    phase = 0
-    for pt, w in PHASE_WEIGHTS.items():
-        if pt == chess.PAWN or pt == chess.KING:
-            continue
-        phase += w * len(board.pieces(pt, chess.WHITE))
-        phase += w * len(board.pieces(pt, chess.BLACK))
 
-    t = min(1.0, max(0.0, phase / MAX_PHASE))
+    N_START = 74
+    N_END = 2
 
-    if t < 0.3:
-        w_open = 1.0 - t / 0.3
-        w_mid = t / 0.3
+    PHASE_DEB_BOUND = 0.3
+    PHASE_MID_BOUND = 0.6
+
+    N_current = 0
+    for pt in [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.KING]:
+        N_current += len(board.pieces(pt, chess.WHITE))
+        N_current += len(board.pieces(pt, chess.BLACK))
+
+    phase = (N_START - N_current) / (N_START - N_END)
+
+    t = min(1.0, max(0.0, phase))
+
+    if t < PHASE_DEB_BOUND:
+        w_open = 1.0 - t / PHASE_DEB_BOUND
+        w_mid = t / PHASE_DEB_BOUND
         w_end = 0.0
-    elif t < 0.7:
+    elif t < PHASE_MID_BOUND:
         w_open = 0.0
         w_mid = 1.0
         w_end = 0.0
     else:
         w_open = 0.0
-        w_mid = 1.0 - (t - 0.7) / 0.3
-        w_end = (t - 0.7) / 0.3
+        w_mid = 1.0 - (t - PHASE_MID_BOUND) / (1.0 - PHASE_MID_BOUND)
+        w_end = (t - PHASE_MID_BOUND) / (1.0 - PHASE_MID_BOUND)
 
     return w_open, w_mid, w_end
 
