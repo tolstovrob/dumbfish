@@ -1,8 +1,8 @@
 """
-Продвинутая HCE-оценка с фазовой интерполяцией.
+Фазовая HCE оценка шахматной позиции.
 
 Оценка состоит из эвристик с разными весами в разных стадиях игры:
-  - Материал (PIECE_VALUES)
+  - Материал (VALUES)
   - PST с фазовой интерполяцией для короля
   - Мобильность (MG/EG таблицы для N/B/R/Q)
   - Пешечные структуры (изолированные, сдвоенные, проходные)
@@ -12,12 +12,105 @@
   - Кони на форпосте
 
 Фаза игры вычисляется по интерполянте, что позволяет добиться более плавного
-перехода между весами
+перехода между весами миттельшпиля и эндшпиля.
 """
 
 import chess
-from evaluation.shared import VALUES, PST, KING_MG_TABLE, KING_EG_TABLE, flip
 
+
+VALUES = {
+    chess.PAWN: 100,
+    chess.KNIGHT: 320,
+    chess.BISHOP: 330,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+    chess.KING: 0,
+}
+
+PAWN_TABLE = [
+      0,   0,   0,   0,   0,   0,   0,   0,
+     50,  50,  50,  50,  50,  50,  50,  50,
+     10,  10,  20,  30,  30,  20,  10,  10,
+      5,   5,  10,  25,  25,  10,   5,   5,
+      0,   0,   0,  20,  20,   0,   0,   0,
+      5,  -5, -10,   0,   0, -10,  -5,   5,
+      5,  10,  10, -20, -20,  10,  10,   5,
+      0,   0,   0,   0,   0,   0,   0,   0,
+]
+
+KNIGHT_TABLE = [
+    -50, -40, -30, -30, -30, -30, -40, -50,
+    -40, -20,   0,   0,   0,   0, -20, -40,
+    -30,   0,  10,  15,  15,  10,   0, -30,
+    -30,   5,  15,  20,  20,  15,   5, -30,
+    -30,   0,  15,  20,  20,  15,   0, -30,
+    -30,   5,  10,  15,  15,  10,   5, -30,
+    -40, -20,   0,   5,   5,   0, -20, -40,
+    -50, -40, -30, -30, -30, -30, -40, -50,
+]
+
+BISHOP_TABLE = [
+    -20, -10, -10, -10, -10, -10, -10, -20,
+    -10,   0,   0,   0,   0,   0,   0, -10,
+    -10,   0,  10,  10,  10,  10,   0, -10,
+    -10,   5,   5,  10,  10,   5,   5, -10,
+    -10,   0,   5,  10,  10,   5,   0, -10,
+    -10,  10,  10,  10,  10,  10,  10, -10,
+    -10,   5,   0,   0,   0,   0,   5, -10,
+    -20, -10, -10, -10, -10, -10, -10, -20,
+]
+
+ROOK_TABLE = [
+      0,   0,   0,   0,   0,   0,   0,   0,
+      5,  10,  10,  10,  10,  10,  10,   5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+      0,   0,   0,   5,   5,   0,   0,   0,
+]
+
+QUEEN_TABLE = [
+    -20, -10, -10,  -5,  -5, -10, -10, -20,
+    -10,   0,   0,   0,   0,   0,   0, -10,
+    -10,   0,   5,   5,   5,   5,   0, -10,
+     -5,   0,   5,   5,   5,   5,   0,  -5,
+      0,   0,   5,   5,   5,   5,   0,  -5,
+    -10,   5,   5,   5,   5,   5,   0, -10,
+    -10,   0,   5,   0,   0,   0,   0, -10,
+    -20, -10, -10,  -5,  -5, -10, -10, -20,
+]
+
+KING_MG_TABLE = [
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -20, -30, -30, -40, -40, -30, -30, -20,
+    -10, -20, -20, -20, -20, -20, -20, -10,
+     20,  20,   0,   0,   0,   0,  20,  20,
+     20,  30,  10,   0,   0,  10,  30,  20,
+]
+
+KING_EG_TABLE = [
+    -50, -40, -30, -20, -20, -30, -40, -50,
+    -30, -20, -10,   0,   0, -10, -20, -30,
+    -30, -10,  20,  30,  30,  20, -10, -30,
+    -30, -10,  30,  40,  40,  30, -10, -30,
+    -30, -10,  30,  40,  40,  30, -10, -30,
+    -30, -10,  20,  30,  30,  20, -10, -30,
+    -30, -30,   0,   0,   0,   0, -30, -30,
+    -50, -30, -30, -30, -30, -30, -30, -50,
+]
+
+PST = {
+    chess.PAWN: PAWN_TABLE,
+    chess.KNIGHT: KNIGHT_TABLE,
+    chess.BISHOP: BISHOP_TABLE,
+    chess.ROOK: ROOK_TABLE,
+    chess.QUEEN: QUEEN_TABLE,
+}
 
 PHASE_WEIGHTS = {
     chess.KNIGHT: 1,
@@ -26,7 +119,6 @@ PHASE_WEIGHTS = {
     chess.QUEEN: 4,
 }
 TOTAL_PHASE = 4 * (1 + 1 + 2 + 4)
-
 
 MOBILITY_MG = {
     chess.KNIGHT: [(-5, 0), (0, 1), (5, 2), (10, 3), (15, 4), (20, 5), (25, 6),
@@ -60,9 +152,6 @@ MOBILITY_EG = {
                    (48, 25), (50, 26), (52, 27)],
 }
 
-KING_SHIELD = [0, 10, 20, 30, 40, 50, 60, 70, 80]
-
-# Пешки
 ISOLATED_MG = -15
 ISOLATED_EG = -25
 DOUBLED_MG = -20
@@ -70,17 +159,14 @@ DOUBLED_EG = -30
 PASSED = [0, 0, 5, 10, 20, 35, 50, 100]
 PASSED_EG_MULT = 2.0
 
-# Безопасность короля
 SHIELD = [0, 10, 20, 30, 40, 50, 60, 70, 80]
 OPEN_FILE = -15
 HALF_OPEN_FILE = -10
 SAFETY_PHASE_MIN = 0.2
 
-# Пара слонов
 BISHOP_PAIR_MG = 50
 BISHOP_PAIR_EG = 70
 
-# Ладьи
 ROOK_OPEN_MG = 25
 ROOK_OPEN_EG = 35
 ROOK_SEMIOPEN_MG = 15
@@ -88,24 +174,61 @@ ROOK_SEMIOPEN_EG = 20
 ROOK_7TH_MG = 20
 ROOK_7TH_EG = 30
 
-# Коневой фортпост
 OUTPOST_MG = 15
 OUTPOST_EG = 10
 
 
+def _terminal_score(board: chess.Board) -> int | None:
+    """None — не терминал, иначе оценка мата/пата."""
+    if board.is_checkmate():
+        return -100_000 if board.turn == chess.WHITE else 100_000
+    if board.is_stalemate() or board.is_insufficient_material():
+        return 0
+    return None
+
+
+def _flip(sq: int) -> int:
+    """Зеркалирование клетки для чёрных (вертикальная симметрия)."""
+    return sq ^ 56
+
+
 def _calculate_phase(board: chess.Board) -> float:
+    """Вычисление фазы игры (0.0 = эндшпиль, 1.0 = миттельшпиль)."""
     phase = 0
     for pt, w in PHASE_WEIGHTS.items():
         phase += w * len(board.pieces(pt, chess.WHITE))
         phase += w * len(board.pieces(pt, chess.BLACK))
-    return phase / TOTAL_PHASE
+    return min(1.0, max(0.0, phase / TOTAL_PHASE))
 
 
 def _interpolate(mg: int, eg: int, phase: float) -> int:
+    """Интерполяция между миттельшпилем (mg) и эндшпилем (eg)."""
     return int(mg * phase + eg * (1.0 - phase))
 
 
-def _mobility(board: chess.Board, phase: float) -> int:
+def _pst_score(board: chess.Board, phase: float) -> int:
+    """Оценка Piece-Square Tables для всех фигур, кроме короля."""
+    score = 0
+    for pt, table in PST.items():
+        for sq in board.pieces(pt, chess.WHITE):
+            score += table[sq]
+        for sq in board.pieces(pt, chess.BLACK):
+            score -= table[_flip(sq)]
+    return score
+
+
+def _king_score(board: chess.Board, phase: float) -> int:
+    """Оценка короля с интерполяцией между MG и EG таблицами."""
+    score = 0
+    for sq in board.pieces(chess.KING, chess.WHITE):
+        score += _interpolate(KING_MG_TABLE[sq], KING_EG_TABLE[sq], phase)
+    for sq in board.pieces(chess.KING, chess.BLACK):
+        score -= _interpolate(KING_MG_TABLE[_flip(sq)], KING_EG_TABLE[_flip(sq)], phase)
+    return score
+
+
+def _mobility_score(board: chess.Board, phase: float) -> int:
+    """Оценка мобильности фигур."""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -118,34 +241,41 @@ def _mobility(board: chess.Board, phase: float) -> int:
     return score
 
 
-def _pawns(board: chess.Board, phase: float) -> int:
+def _pawns_score(board: chess.Board, phase: float) -> int:
+    """Оценка пешечной структуры."""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
         own = board.pieces(chess.PAWN, color)
         enemy = board.pieces(chess.PAWN, not color)
+        own_mask = int(own)
+        enemy_mask = int(enemy)
 
         for sq in own:
             file = chess.square_file(sq)
             rank = chess.square_rank(sq)
 
-            if not (chess.BB_FILES[file - 1] & int(own) if file > 0 else False) and \
-               not (chess.BB_FILES[file + 1] & int(own) if file < 7 else False):
+            left_file = file - 1
+            right_file = file + 1
+            left_ok = left_file >= 0 and (chess.BB_FILES[left_file] & own_mask)
+            right_ok = right_file <= 7 and (chess.BB_FILES[right_file] & own_mask)
+            if not left_ok and not right_ok:
                 score += mul * _interpolate(ISOLATED_MG, ISOLATED_EG, phase)
 
-            if (int(own) & chess.BB_FILES[file]).bit_count() > 1:
+            if (own_mask & chess.BB_FILES[file]).bit_count() > 1:
                 score += mul * _interpolate(DOUBLED_MG, DOUBLED_EG, phase)
 
             if color == chess.WHITE:
                 blocked = False
                 for r in range(rank + 1, 8):
-                    if int(enemy) & chess.BB_SQUARES[chess.square(file, r)]:
+                    sq_check = chess.square(file, r)
+                    if enemy_mask & chess.BB_SQUARES[sq_check]:
                         blocked = True
                         break
-                    if file > 0 and int(enemy) & chess.BB_SQUARES[chess.square(file - 1, r)]:
+                    if file > 0 and enemy_mask & chess.BB_SQUARES[chess.square(file - 1, r)]:
                         blocked = True
                         break
-                    if file < 7 and int(enemy) & chess.BB_SQUARES[chess.square(file + 1, r)]:
+                    if file < 7 and enemy_mask & chess.BB_SQUARES[chess.square(file + 1, r)]:
                         blocked = True
                         break
                 if not blocked:
@@ -154,13 +284,14 @@ def _pawns(board: chess.Board, phase: float) -> int:
             else:
                 blocked = False
                 for r in range(rank - 1, -1, -1):
-                    if int(enemy) & chess.BB_SQUARES[chess.square(file, r)]:
+                    sq_check = chess.square(file, r)
+                    if enemy_mask & chess.BB_SQUARES[sq_check]:
                         blocked = True
                         break
-                    if file > 0 and int(enemy) & chess.BB_SQUARES[chess.square(file - 1, r)]:
+                    if file > 0 and enemy_mask & chess.BB_SQUARES[chess.square(file - 1, r)]:
                         blocked = True
                         break
-                    if file < 7 and int(enemy) & chess.BB_SQUARES[chess.square(file + 1, r)]:
+                    if file < 7 and enemy_mask & chess.BB_SQUARES[chess.square(file + 1, r)]:
                         blocked = True
                         break
                 if not blocked:
@@ -170,7 +301,8 @@ def _pawns(board: chess.Board, phase: float) -> int:
     return score
 
 
-def _king_safety(board: chess.Board, phase: float) -> int:
+def _king_safety_score(board: chess.Board, phase: float) -> int:
+    """Оценка безопасности короля."""
     if phase < SAFETY_PHASE_MIN:
         return 0
 
@@ -178,6 +310,8 @@ def _king_safety(board: chess.Board, phase: float) -> int:
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
         ks = board.king(color)
+        if ks is None:
+            continue
         file = chess.square_file(ks)
         rank = chess.square_rank(ks)
 
@@ -210,7 +344,8 @@ def _king_safety(board: chess.Board, phase: float) -> int:
     return score
 
 
-def _bishop_pair(board: chess.Board, phase: float) -> int:
+def _bishop_pair_score(board: chess.Board, phase: float) -> int:
+    """Оценка за пару слонов на разноцветных полях."""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -223,7 +358,8 @@ def _bishop_pair(board: chess.Board, phase: float) -> int:
     return score
 
 
-def _rooks(board: chess.Board, phase: float) -> int:
+def _rooks_score(board: chess.Board, phase: float) -> int:
+    """Оценка ладей (открытые линии, 7-я горизонталь)."""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -242,7 +378,8 @@ def _rooks(board: chess.Board, phase: float) -> int:
     return score
 
 
-def _knights(board: chess.Board, phase: float) -> int:
+def _knights_score(board: chess.Board, phase: float) -> int:
+    """Оценка коней на форпосте."""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -268,6 +405,14 @@ def _knights(board: chess.Board, phase: float) -> int:
 
 
 def evaluate(board: chess.Board) -> int:
+    """
+    Полная фазовая HCE оценка позиции с точки зрения белых.
+    Учитывает терминальные позиции (мат, пат).
+    """
+    term = _terminal_score(board)
+    if term is not None:
+        return term
+
     phase = _calculate_phase(board)
     score = 0
 
@@ -275,24 +420,15 @@ def evaluate(board: chess.Board) -> int:
         score += val * len(board.pieces(pt, chess.WHITE))
         score -= val * len(board.pieces(pt, chess.BLACK))
 
-    for pt in [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN]:
-        for sq in board.pieces(pt, chess.WHITE):
-            table = PST[pt]
-            score += table[sq]
-        for sq in board.pieces(pt, chess.BLACK):
-            table = PST[pt]
-            score -= table[flip(sq)]
+    score += _pst_score(board, phase)
 
-    for sq in board.pieces(chess.KING, chess.WHITE):
-        score += _interpolate(KING_MG_TABLE[sq], KING_EG_TABLE[sq], phase)
-    for sq in board.pieces(chess.KING, chess.BLACK):
-        score -= _interpolate(KING_MG_TABLE[flip(sq)], KING_EG_TABLE[flip(sq)], phase)
+    score += _king_score(board, phase)
 
-    score += _mobility(board, phase)
-    score += _pawns(board, phase)
-    score += _king_safety(board, phase)
-    score += _bishop_pair(board, phase)
-    score += _rooks(board, phase)
-    score += _knights(board, phase)
+    score += _mobility_score(board, phase)
+    score += _pawns_score(board, phase)
+    score += _king_safety_score(board, phase)
+    score += _bishop_pair_score(board, phase)
+    score += _rooks_score(board, phase)
+    score += _knights_score(board, phase)
 
     return score
