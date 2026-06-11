@@ -33,7 +33,7 @@ def calculate_phase(board: chess.Board) -> tuple[float, float, float]:
     N_START = 74
     N_END = 2
 
-    PHASE_DEB_BOUND = 0.3
+    PHASE_OP_BOUND = 0.3
     PHASE_MID_BOUND = 0.6
 
     N_current = 0
@@ -45,9 +45,9 @@ def calculate_phase(board: chess.Board) -> tuple[float, float, float]:
 
     t = min(1.0, max(0.0, phase))
 
-    if t < PHASE_DEB_BOUND:
-        w_open = 1.0 - t / PHASE_DEB_BOUND
-        w_mid = t / PHASE_DEB_BOUND
+    if t < PHASE_OP_BOUND:
+        w_open = 1.0 - t / PHASE_OP_BOUND
+        w_mid = t / PHASE_OP_BOUND
         w_end = 0.0
     elif t < PHASE_MID_BOUND:
         w_open = 0.0
