@@ -16,7 +16,7 @@
 
 import chess
 import time
-from evaluation import evaluate
+from score import evaluate
 from tt import TranspositionTable, TTFlag
 
 MATE_SCORE = 100_000
