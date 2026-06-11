@@ -8,9 +8,10 @@ import sys
 from game import Game
 from uci import uci_loop
 
+
 def main():
     sys.stdout.reconfigure(line_buffering=True)
-    
+
     game = Game()
     uci_loop(game)
 

@@ -16,10 +16,10 @@ class QuitException(Exception):
 def _format_score(score: int) -> str:
     """
     Форматирует оценку в UCI-формат.
-    
+
     Для матовых оценок: mate N (где N - ходы до мата)
     Для обычных оценок: cp S (сантипешки, оценка в centipawns)
-    
+
     Внутренняя оценка: положительная = хорошо для белых
     UCI: положительная = хорошо для текущего игрока
     """
@@ -39,20 +39,21 @@ def _format_pv(pv_line: list) -> str:
     """Форматирует PV линию в UCI-строку."""
     if not pv_line:
         return ""
-    return " ".join(move.uci() if hasattr(move, 'uci') else str(move) 
-                    for move in pv_line)
+    return " ".join(
+        move.uci() if hasattr(move, "uci") else str(move) for move in pv_line
+    )
 
 
 def _print_info(info: dict, board_turn: chess.Color) -> None:
     """
     Выводит info-строку в UCI-формате.
-    
+
     Формат: info depth N score [cp S | mate N] nodes N time N nps N pv M1 M2 ...
-    
+
     Оценка score преобразуется: внутренняя всегда с точки зрения белых,
     UCI требует с точки зрения текущего игрока.
     """
-    score = info['score']
+    score = info["score"]
     if board_turn == chess.BLACK:
         score = -score
 
@@ -64,7 +65,7 @@ def _print_info(info: dict, board_turn: chess.Color) -> None:
         f"nps {info['nps']}",
     ]
 
-    pv_str = _format_pv(info.get('pv', []))
+    pv_str = _format_pv(info.get("pv", []))
     if pv_str:
         parts.append(f"pv {pv_str}")
 
@@ -106,7 +107,7 @@ def handle_position(args: list[str], game: Game) -> None:
         return
 
     if moves_start_idx < len(args) and args[moves_start_idx] == "moves":
-        game.apply_moves(args[moves_start_idx + 1:])
+        game.apply_moves(args[moves_start_idx + 1 :])
 
 
 def handle_go(args: list[str], game: Game) -> None:
@@ -123,10 +124,10 @@ def handle_go(args: list[str], game: Game) -> None:
         return
 
     best_move, info_list = search(game.get_board(), depth, game.get_tt())
-    
+
     for info in info_list:
         _print_info(info, game.get_board().turn)
-    
+
     if best_move is not None:
         print(f"bestmove {best_move}")
     else:

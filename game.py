@@ -5,19 +5,18 @@
 import chess
 from tt import TranspositionTable
 
+
 class Game:
     """Хранит текущую доску и операции над ней"""
-    
+
     def __init__(self) -> None:
         self.board = chess.Board()
         self.tt = TranspositionTable(size_mb=64)
 
-    
     def reset(self) -> None:
         """Сброс в начальную позицию"""
         self.board = chess.Board()
         self.tt.clear()
-
 
     def set_fen(self, fen: str) -> bool:
         """Установить позицию в формате FEN. Вернуть False при ошибке"""
@@ -26,8 +25,7 @@ class Game:
             return True
         except ValueError:
             return False
-    
-    
+
     def apply_moves(self, uci_moves: list[str]) -> None:
         """
         Применить ходы UCI к текущей позиции.
@@ -38,14 +36,11 @@ class Game:
                 self.board.push_uci(move)
             except ValueError:
                 break
-    
 
     def get_board(self) -> chess.Board:
         """Получить текущую доску"""
         return self.board
-    
 
     def get_tt(self) -> TranspositionTable:
         """Получить транспозиционную позицию"""
         return self.tt
-    

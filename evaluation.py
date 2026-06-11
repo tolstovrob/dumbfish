@@ -17,7 +17,6 @@
 
 import chess
 
-
 VALUES = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
@@ -28,80 +27,472 @@ VALUES = {
 }
 
 PAWN_TABLE = [
-      0,   0,   0,   0,   0,   0,   0,   0,
-     50,  50,  50,  50,  50,  50,  50,  50,
-     10,  10,  20,  30,  30,  20,  10,  10,
-      5,   5,  10,  25,  25,  10,   5,   5,
-      0,   0,   0,  20,  20,   0,   0,   0,
-      5,  -5, -10,   0,   0, -10,  -5,   5,
-      5,  10,  10, -20, -20,  10,  10,   5,
-      0,   0,   0,   0,   0,   0,   0,   0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    10,
+    10,
+    20,
+    30,
+    30,
+    20,
+    10,
+    10,
+    5,
+    5,
+    10,
+    25,
+    25,
+    10,
+    5,
+    5,
+    0,
+    0,
+    0,
+    20,
+    20,
+    0,
+    0,
+    0,
+    5,
+    -5,
+    -10,
+    0,
+    0,
+    -10,
+    -5,
+    5,
+    5,
+    10,
+    10,
+    -20,
+    -20,
+    10,
+    10,
+    5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
 ]
 
 KNIGHT_TABLE = [
-    -50, -40, -30, -30, -30, -30, -40, -50,
-    -40, -20,   0,   0,   0,   0, -20, -40,
-    -30,   0,  10,  15,  15,  10,   0, -30,
-    -30,   5,  15,  20,  20,  15,   5, -30,
-    -30,   0,  15,  20,  20,  15,   0, -30,
-    -30,   5,  10,  15,  15,  10,   5, -30,
-    -40, -20,   0,   5,   5,   0, -20, -40,
-    -50, -40, -30, -30, -30, -30, -40, -50,
+    -50,
+    -40,
+    -30,
+    -30,
+    -30,
+    -30,
+    -40,
+    -50,
+    -40,
+    -20,
+    0,
+    0,
+    0,
+    0,
+    -20,
+    -40,
+    -30,
+    0,
+    10,
+    15,
+    15,
+    10,
+    0,
+    -30,
+    -30,
+    5,
+    15,
+    20,
+    20,
+    15,
+    5,
+    -30,
+    -30,
+    0,
+    15,
+    20,
+    20,
+    15,
+    0,
+    -30,
+    -30,
+    5,
+    10,
+    15,
+    15,
+    10,
+    5,
+    -30,
+    -40,
+    -20,
+    0,
+    5,
+    5,
+    0,
+    -20,
+    -40,
+    -50,
+    -40,
+    -30,
+    -30,
+    -30,
+    -30,
+    -40,
+    -50,
 ]
 
 BISHOP_TABLE = [
-    -20, -10, -10, -10, -10, -10, -10, -20,
-    -10,   0,   0,   0,   0,   0,   0, -10,
-    -10,   0,  10,  10,  10,  10,   0, -10,
-    -10,   5,   5,  10,  10,   5,   5, -10,
-    -10,   0,   5,  10,  10,   5,   0, -10,
-    -10,  10,  10,  10,  10,  10,  10, -10,
-    -10,   5,   0,   0,   0,   0,   5, -10,
-    -20, -10, -10, -10, -10, -10, -10, -20,
+    -20,
+    -10,
+    -10,
+    -10,
+    -10,
+    -10,
+    -10,
+    -20,
+    -10,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -10,
+    -10,
+    0,
+    10,
+    10,
+    10,
+    10,
+    0,
+    -10,
+    -10,
+    5,
+    5,
+    10,
+    10,
+    5,
+    5,
+    -10,
+    -10,
+    0,
+    5,
+    10,
+    10,
+    5,
+    0,
+    -10,
+    -10,
+    10,
+    10,
+    10,
+    10,
+    10,
+    10,
+    -10,
+    -10,
+    5,
+    0,
+    0,
+    0,
+    0,
+    5,
+    -10,
+    -20,
+    -10,
+    -10,
+    -10,
+    -10,
+    -10,
+    -10,
+    -20,
 ]
 
 ROOK_TABLE = [
-      0,   0,   0,   0,   0,   0,   0,   0,
-      5,  10,  10,  10,  10,  10,  10,   5,
-     -5,   0,   0,   0,   0,   0,   0,  -5,
-     -5,   0,   0,   0,   0,   0,   0,  -5,
-     -5,   0,   0,   0,   0,   0,   0,  -5,
-     -5,   0,   0,   0,   0,   0,   0,  -5,
-     -5,   0,   0,   0,   0,   0,   0,  -5,
-      0,   0,   0,   5,   5,   0,   0,   0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    5,
+    10,
+    10,
+    10,
+    10,
+    10,
+    10,
+    5,
+    -5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -5,
+    -5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -5,
+    -5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -5,
+    -5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -5,
+    -5,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -5,
+    0,
+    0,
+    0,
+    5,
+    5,
+    0,
+    0,
+    0,
 ]
 
 QUEEN_TABLE = [
-    -20, -10, -10,  -5,  -5, -10, -10, -20,
-    -10,   0,   0,   0,   0,   0,   0, -10,
-    -10,   0,   5,   5,   5,   5,   0, -10,
-     -5,   0,   5,   5,   5,   5,   0,  -5,
-      0,   0,   5,   5,   5,   5,   0,  -5,
-    -10,   5,   5,   5,   5,   5,   0, -10,
-    -10,   0,   5,   0,   0,   0,   0, -10,
-    -20, -10, -10,  -5,  -5, -10, -10, -20,
+    -20,
+    -10,
+    -10,
+    -5,
+    -5,
+    -10,
+    -10,
+    -20,
+    -10,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    -10,
+    -10,
+    0,
+    5,
+    5,
+    5,
+    5,
+    0,
+    -10,
+    -5,
+    0,
+    5,
+    5,
+    5,
+    5,
+    0,
+    -5,
+    0,
+    0,
+    5,
+    5,
+    5,
+    5,
+    0,
+    -5,
+    -10,
+    5,
+    5,
+    5,
+    5,
+    5,
+    0,
+    -10,
+    -10,
+    0,
+    5,
+    0,
+    0,
+    0,
+    0,
+    -10,
+    -20,
+    -10,
+    -10,
+    -5,
+    -5,
+    -10,
+    -10,
+    -20,
 ]
 
 KING_MG_TABLE = [
-    -30, -40, -40, -50, -50, -40, -40, -30,
-    -30, -40, -40, -50, -50, -40, -40, -30,
-    -30, -40, -40, -50, -50, -40, -40, -30,
-    -30, -40, -40, -50, -50, -40, -40, -30,
-    -20, -30, -30, -40, -40, -30, -30, -20,
-    -10, -20, -20, -20, -20, -20, -20, -10,
-     20,  20,   0,   0,   0,   0,  20,  20,
-     20,  30,  10,   0,   0,  10,  30,  20,
+    -30,
+    -40,
+    -40,
+    -50,
+    -50,
+    -40,
+    -40,
+    -30,
+    -30,
+    -40,
+    -40,
+    -50,
+    -50,
+    -40,
+    -40,
+    -30,
+    -30,
+    -40,
+    -40,
+    -50,
+    -50,
+    -40,
+    -40,
+    -30,
+    -30,
+    -40,
+    -40,
+    -50,
+    -50,
+    -40,
+    -40,
+    -30,
+    -20,
+    -30,
+    -30,
+    -40,
+    -40,
+    -30,
+    -30,
+    -20,
+    -10,
+    -20,
+    -20,
+    -20,
+    -20,
+    -20,
+    -20,
+    -10,
+    20,
+    20,
+    0,
+    0,
+    0,
+    0,
+    20,
+    20,
+    20,
+    30,
+    10,
+    0,
+    0,
+    10,
+    30,
+    20,
 ]
 
 KING_EG_TABLE = [
-    -50, -40, -30, -20, -20, -30, -40, -50,
-    -30, -20, -10,   0,   0, -10, -20, -30,
-    -30, -10,  20,  30,  30,  20, -10, -30,
-    -30, -10,  30,  40,  40,  30, -10, -30,
-    -30, -10,  30,  40,  40,  30, -10, -30,
-    -30, -10,  20,  30,  30,  20, -10, -30,
-    -30, -30,   0,   0,   0,   0, -30, -30,
-    -50, -30, -30, -30, -30, -30, -30, -50,
+    -50,
+    -40,
+    -30,
+    -20,
+    -20,
+    -30,
+    -40,
+    -50,
+    -30,
+    -20,
+    -10,
+    0,
+    0,
+    -10,
+    -20,
+    -30,
+    -30,
+    -10,
+    20,
+    30,
+    30,
+    20,
+    -10,
+    -30,
+    -30,
+    -10,
+    30,
+    40,
+    40,
+    30,
+    -10,
+    -30,
+    -30,
+    -10,
+    30,
+    40,
+    40,
+    30,
+    -10,
+    -30,
+    -30,
+    -10,
+    20,
+    30,
+    30,
+    20,
+    -10,
+    -30,
+    -30,
+    -30,
+    0,
+    0,
+    0,
+    0,
+    -30,
+    -30,
+    -50,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -30,
+    -50,
 ]
 
 PST = {
@@ -121,35 +512,157 @@ PHASE_WEIGHTS = {
 TOTAL_PHASE = 4 * (1 + 1 + 2 + 4)
 
 MOBILITY_MG = {
-    chess.KNIGHT: [(-5, 0), (0, 1), (5, 2), (10, 3), (15, 4), (20, 5), (25, 6),
-                   (30, 7), (35, 8)],
-    chess.BISHOP: [(-10, 0), (0, 1), (5, 2), (10, 3), (15, 4), (20, 5), (25, 6),
-                   (30, 7), (35, 8), (40, 9), (45, 10), (50, 11), (55, 12),
-                   (60, 13)],
-    chess.ROOK:   [(0, 0), (0, 1), (5, 2), (10, 3), (15, 4), (20, 5), (25, 6),
-                   (30, 7), (35, 8), (40, 9), (45, 10), (50, 11), (55, 12),
-                   (60, 13), (65, 14)],
-    chess.QUEEN:  [(0, 0), (0, 1), (2, 2), (4, 3), (6, 4), (8, 5), (10, 6),
-                   (12, 7), (14, 8), (16, 9), (18, 10), (20, 11), (22, 12),
-                   (24, 13), (26, 14), (28, 15), (30, 16), (32, 17), (34, 18),
-                   (36, 19), (38, 20), (40, 21), (42, 22), (44, 23), (46, 24),
-                   (48, 25), (50, 26), (52, 27)],
+    chess.KNIGHT: [
+        (-5, 0),
+        (0, 1),
+        (5, 2),
+        (10, 3),
+        (15, 4),
+        (20, 5),
+        (25, 6),
+        (30, 7),
+        (35, 8),
+    ],
+    chess.BISHOP: [
+        (-10, 0),
+        (0, 1),
+        (5, 2),
+        (10, 3),
+        (15, 4),
+        (20, 5),
+        (25, 6),
+        (30, 7),
+        (35, 8),
+        (40, 9),
+        (45, 10),
+        (50, 11),
+        (55, 12),
+        (60, 13),
+    ],
+    chess.ROOK: [
+        (0, 0),
+        (0, 1),
+        (5, 2),
+        (10, 3),
+        (15, 4),
+        (20, 5),
+        (25, 6),
+        (30, 7),
+        (35, 8),
+        (40, 9),
+        (45, 10),
+        (50, 11),
+        (55, 12),
+        (60, 13),
+        (65, 14),
+    ],
+    chess.QUEEN: [
+        (0, 0),
+        (0, 1),
+        (2, 2),
+        (4, 3),
+        (6, 4),
+        (8, 5),
+        (10, 6),
+        (12, 7),
+        (14, 8),
+        (16, 9),
+        (18, 10),
+        (20, 11),
+        (22, 12),
+        (24, 13),
+        (26, 14),
+        (28, 15),
+        (30, 16),
+        (32, 17),
+        (34, 18),
+        (36, 19),
+        (38, 20),
+        (40, 21),
+        (42, 22),
+        (44, 23),
+        (46, 24),
+        (48, 25),
+        (50, 26),
+        (52, 27),
+    ],
 }
 
 MOBILITY_EG = {
-    chess.KNIGHT: [(-10, 0), (0, 1), (5, 2), (10, 3), (15, 4), (20, 5), (25, 6),
-                   (30, 7), (35, 8)],
-    chess.BISHOP: [(-10, 0), (0, 1), (5, 2), (10, 3), (15, 4), (20, 5), (25, 6),
-                   (30, 7), (35, 8), (40, 9), (45, 10), (50, 11), (55, 12),
-                   (60, 13)],
-    chess.ROOK:   [(0, 0), (0, 1), (5, 2), (10, 3), (15, 4), (20, 5), (25, 6),
-                   (30, 7), (35, 8), (40, 9), (45, 10), (50, 11), (55, 12),
-                   (60, 13), (65, 14)],
-    chess.QUEEN:  [(0, 0), (0, 1), (2, 2), (4, 3), (6, 4), (8, 5), (10, 6),
-                   (12, 7), (14, 8), (16, 9), (18, 10), (20, 11), (22, 12),
-                   (24, 13), (26, 14), (28, 15), (30, 16), (32, 17), (34, 18),
-                   (36, 19), (38, 20), (40, 21), (42, 22), (44, 23), (46, 24),
-                   (48, 25), (50, 26), (52, 27)],
+    chess.KNIGHT: [
+        (-10, 0),
+        (0, 1),
+        (5, 2),
+        (10, 3),
+        (15, 4),
+        (20, 5),
+        (25, 6),
+        (30, 7),
+        (35, 8),
+    ],
+    chess.BISHOP: [
+        (-10, 0),
+        (0, 1),
+        (5, 2),
+        (10, 3),
+        (15, 4),
+        (20, 5),
+        (25, 6),
+        (30, 7),
+        (35, 8),
+        (40, 9),
+        (45, 10),
+        (50, 11),
+        (55, 12),
+        (60, 13),
+    ],
+    chess.ROOK: [
+        (0, 0),
+        (0, 1),
+        (5, 2),
+        (10, 3),
+        (15, 4),
+        (20, 5),
+        (25, 6),
+        (30, 7),
+        (35, 8),
+        (40, 9),
+        (45, 10),
+        (50, 11),
+        (55, 12),
+        (60, 13),
+        (65, 14),
+    ],
+    chess.QUEEN: [
+        (0, 0),
+        (0, 1),
+        (2, 2),
+        (4, 3),
+        (6, 4),
+        (8, 5),
+        (10, 6),
+        (12, 7),
+        (14, 8),
+        (16, 9),
+        (18, 10),
+        (20, 11),
+        (22, 12),
+        (24, 13),
+        (26, 14),
+        (28, 15),
+        (30, 16),
+        (32, 17),
+        (34, 18),
+        (36, 19),
+        (38, 20),
+        (40, 21),
+        (42, 22),
+        (44, 23),
+        (46, 24),
+        (48, 25),
+        (50, 26),
+        (52, 27),
+    ],
 }
 
 ISOLATED_MG = -15
@@ -272,15 +785,23 @@ def _pawns_score(board: chess.Board, phase: float) -> int:
                     if enemy_mask & chess.BB_SQUARES[sq_check]:
                         blocked = True
                         break
-                    if file > 0 and enemy_mask & chess.BB_SQUARES[chess.square(file - 1, r)]:
+                    if (
+                        file > 0
+                        and enemy_mask & chess.BB_SQUARES[chess.square(file - 1, r)]
+                    ):
                         blocked = True
                         break
-                    if file < 7 and enemy_mask & chess.BB_SQUARES[chess.square(file + 1, r)]:
+                    if (
+                        file < 7
+                        and enemy_mask & chess.BB_SQUARES[chess.square(file + 1, r)]
+                    ):
                         blocked = True
                         break
                 if not blocked:
                     bonus = PASSED[rank]
-                    score += mul * _interpolate(bonus, int(bonus * PASSED_EG_MULT), phase)
+                    score += mul * _interpolate(
+                        bonus, int(bonus * PASSED_EG_MULT), phase
+                    )
             else:
                 blocked = False
                 for r in range(rank - 1, -1, -1):
@@ -288,15 +809,23 @@ def _pawns_score(board: chess.Board, phase: float) -> int:
                     if enemy_mask & chess.BB_SQUARES[sq_check]:
                         blocked = True
                         break
-                    if file > 0 and enemy_mask & chess.BB_SQUARES[chess.square(file - 1, r)]:
+                    if (
+                        file > 0
+                        and enemy_mask & chess.BB_SQUARES[chess.square(file - 1, r)]
+                    ):
                         blocked = True
                         break
-                    if file < 7 and enemy_mask & chess.BB_SQUARES[chess.square(file + 1, r)]:
+                    if (
+                        file < 7
+                        and enemy_mask & chess.BB_SQUARES[chess.square(file + 1, r)]
+                    ):
                         blocked = True
                         break
                 if not blocked:
                     bonus = PASSED[7 - rank]
-                    score += mul * _interpolate(bonus, int(bonus * PASSED_EG_MULT), phase)
+                    score += mul * _interpolate(
+                        bonus, int(bonus * PASSED_EG_MULT), phase
+                    )
 
     return score
 
@@ -320,12 +849,16 @@ def _king_safety_score(board: chess.Board, phase: float) -> int:
             if 0 <= f <= 7:
                 if color == chess.WHITE:
                     for r in range(rank, min(rank + 3, 8)):
-                        if board.piece_at(chess.square(f, r)) == chess.Piece(chess.PAWN, color):
+                        if board.piece_at(chess.square(f, r)) == chess.Piece(
+                            chess.PAWN, color
+                        ):
                             shield += 1
                             break
                 else:
                     for r in range(rank, max(rank - 3, -1), -1):
-                        if board.piece_at(chess.square(f, r)) == chess.Piece(chess.PAWN, color):
+                        if board.piece_at(chess.square(f, r)) == chess.Piece(
+                            chess.PAWN, color
+                        ):
                             shield += 1
                             break
         score += mul * int(SHIELD[min(shield, 8)] * phase)
@@ -334,7 +867,9 @@ def _king_safety_score(board: chess.Board, phase: float) -> int:
         for f in [file - 1, file, file + 1]:
             if 0 <= f <= 7:
                 own_pawns = int(board.pieces(chess.PAWN, color)) & chess.BB_FILES[f]
-                enemy_pawns = int(board.pieces(chess.PAWN, not color)) & chess.BB_FILES[f]
+                enemy_pawns = (
+                    int(board.pieces(chess.PAWN, not color)) & chess.BB_FILES[f]
+                )
                 if not own_pawns:
                     penalty += OPEN_FILE
                     if not enemy_pawns:
@@ -352,8 +887,9 @@ def _bishop_pair_score(board: chess.Board, phase: float) -> int:
         bishops = list(board.pieces(chess.BISHOP, color))
         if len(bishops) >= 2:
             sq1, sq2 = bishops[0], bishops[1]
-            if (chess.square_file(sq1) + chess.square_rank(sq1)) % 2 != \
-               (chess.square_file(sq2) + chess.square_rank(sq2)) % 2:
+            if (chess.square_file(sq1) + chess.square_rank(sq1)) % 2 != (
+                chess.square_file(sq2) + chess.square_rank(sq2)
+            ) % 2:
                 score += mul * _interpolate(BISHOP_PAIR_MG, BISHOP_PAIR_EG, phase)
     return score
 
@@ -372,8 +908,12 @@ def _rooks_score(board: chess.Board, phase: float) -> int:
                 if not enemy:
                     score += mul * _interpolate(ROOK_OPEN_MG, ROOK_OPEN_EG, phase)
                 else:
-                    score += mul * _interpolate(ROOK_SEMIOPEN_MG, ROOK_SEMIOPEN_EG, phase)
-            if (color == chess.WHITE and rank == 6) or (color == chess.BLACK and rank == 1):
+                    score += mul * _interpolate(
+                        ROOK_SEMIOPEN_MG, ROOK_SEMIOPEN_EG, phase
+                    )
+            if (color == chess.WHITE and rank == 6) or (
+                color == chess.BLACK and rank == 1
+            ):
                 score += mul * _interpolate(ROOK_7TH_MG, ROOK_7TH_EG, phase)
     return score
 
@@ -386,17 +926,24 @@ def _knights_score(board: chess.Board, phase: float) -> int:
         for sq in board.pieces(chess.KNIGHT, color):
             file = chess.square_file(sq)
             rank = chess.square_rank(sq)
-            if (color == chess.WHITE and rank < 4) or (color == chess.BLACK and rank > 3):
+            if (color == chess.WHITE and rank < 4) or (
+                color == chess.BLACK and rank > 3
+            ):
                 continue
             pawn_rank = rank - 1 if color == chess.WHITE else rank + 1
             if 0 <= pawn_rank <= 7:
-                if board.piece_at(chess.square(file, pawn_rank)) == chess.Piece(chess.PAWN, color):
+                if board.piece_at(chess.square(file, pawn_rank)) == chess.Piece(
+                    chess.PAWN, color
+                ):
                     attacked = False
                     enemy_pawns = int(board.pieces(chess.PAWN, not color))
                     atk_rank = rank + 1 if color == chess.WHITE else rank - 1
                     for af in [file - 1, file + 1]:
                         if 0 <= af <= 7 and 0 <= atk_rank <= 7:
-                            if enemy_pawns & chess.BB_SQUARES[chess.square(af, atk_rank)]:
+                            if (
+                                enemy_pawns
+                                & chess.BB_SQUARES[chess.square(af, atk_rank)]
+                            ):
                                 attacked = True
                                 break
                     if not attacked:
