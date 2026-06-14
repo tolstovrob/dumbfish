@@ -134,7 +134,7 @@ def _mobility_score(board: chess.Board, weights: tuple[float, float, float]) -> 
 
 
 def _pawns_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка пешечной структуры с трёхфазной интерполяцией"""
+    """Оценка пешечной структуры"""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
