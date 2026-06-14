@@ -9,7 +9,7 @@
   - Безопасность короля (прикрытие, открытые линии)
   - Пара слонов
   - Ладьи на открытых/полуоткрытых линиях и 7-й горизонтали
-  - Кони на форпосте
+  - Кони на фортпосте
 
 Фаза игры вычисляется по интерполянте, что позволяет добиться более плавного
 перехода между весами дебюта, миттельшпиля и эндшпиля.
@@ -326,7 +326,7 @@ def _rooks_score(board: chess.Board, weights: tuple[float, float, float]) -> int
 
 
 def _knights_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка коней на форпосте."""
+    """Оценка коней на фортпосте."""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
