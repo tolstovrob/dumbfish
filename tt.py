@@ -49,7 +49,7 @@ class TranspositionTable:
         return sum(1 for entry in self.table if entry is not None)
 
     def probe(self, hash_val: int) -> TTEntry | None:
-        """Поиск позиции в таблице. Возвращает запись с тем же хешем или None."""
+        """Поиск позиции в таблице. Возвращает запись с тем же хешем или None"""
 
         index = hash_val & self.size
         entry = self.table[index]
@@ -82,7 +82,7 @@ class TranspositionTable:
             self.table[index] = TTEntry(hash_val, depth, score, flag, best_move)
 
     def get_hash(self, board: chess.Board) -> int:
-        """Возвращает хеш для позиции в формате Zobrist."""
+        """Возвращает хеш для позиции в формате Zobrist"""
         return chess.polyglot.zobrist_hash(board)
 
     def clear(self) -> None:

@@ -18,9 +18,11 @@
 import chess
 from pst import *
 
+MATE_SCORE = 100_000
+
 
 def _flip(sq: int) -> int:
-    """Зеркалирование для чёрных."""
+    """Зеркалирование для чёрных"""
     return sq ^ 56
 
 
@@ -67,22 +69,22 @@ def _interpolate(
     endgame: int,
     weights: tuple[float, float, float],
 ) -> int:
-    """Трёхфазная интерполяция."""
+    """Трёхфазная интерполяция"""
     w_open, w_mid, w_end = weights
     return int(opening * w_open + middlegame * w_mid + endgame * w_end)
 
 
 def _terminal_score(board: chess.Board) -> int | None:
-    """Проверка терминальных позиций."""
+    """Проверка терминальных позиций"""
     if board.is_checkmate():
-        return -100_000 if board.turn == chess.WHITE else 100_000
+        return -MATE_SCORE if board.turn == chess.WHITE else MATE_SCORE
     if board.is_stalemate() or board.is_insufficient_material():
         return 0
     return None
 
 
 def _pst_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка PST с трёхфазной интерполяцией."""
+    """Оценка PST с трёхфазной интерполяцией"""
     score = 0
     for pt, (opening, middlegame, endgame) in PST_PHASE.items():
         if pt == chess.KING:
@@ -100,7 +102,7 @@ def _pst_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
 
 
 def _king_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка короля."""
+    """Оценка короля"""
     score = 0
     opening, middlegame, endgame = PST_PHASE[chess.KING]
     for sq in board.pieces(chess.KING, chess.WHITE):
@@ -116,7 +118,7 @@ def _king_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
 
 
 def _mobility_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка мобильности."""
+    """Оценка мобильности"""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -139,7 +141,7 @@ def _mobility_score(board: chess.Board, weights: tuple[float, float, float]) -> 
 
 
 def _pawns_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка пешечной структуры с трёхфазной интерполяцией."""
+    """Оценка пешечной структуры с трёхфазной интерполяцией"""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -212,7 +214,7 @@ def _pawns_score(board: chess.Board, weights: tuple[float, float, float]) -> int
 
 
 def _king_safety_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка безопасности короля."""
+    """Оценка безопасности короля"""
     w_open, w_mid, w_end = weights
     if w_mid + w_end < SAFETY_PHASE_MIN:
         return 0
@@ -278,7 +280,7 @@ def _king_safety_score(board: chess.Board, weights: tuple[float, float, float]) 
 
 
 def _bishop_pair_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка за пару слонов."""
+    """Оценка за пару слонов"""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -295,7 +297,7 @@ def _bishop_pair_score(board: chess.Board, weights: tuple[float, float, float]) 
 
 
 def _rooks_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка ладей."""
+    """Оценка ладей"""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1
@@ -326,7 +328,7 @@ def _rooks_score(board: chess.Board, weights: tuple[float, float, float]) -> int
 
 
 def _knights_score(board: chess.Board, weights: tuple[float, float, float]) -> int:
-    """Оценка коней на фортпосте."""
+    """Оценка коней на фортпосте"""
     score = 0
     for color in [chess.WHITE, chess.BLACK]:
         mul = 1 if color == chess.WHITE else -1

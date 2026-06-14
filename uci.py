@@ -10,7 +10,7 @@ from search import search
 
 
 class QuitException(Exception):
-    """Сигнал завершить UCI-цикл."""
+    """Сигнал завершить UCI-цикл"""
 
 
 def _format_score(score: int) -> str:
@@ -36,7 +36,7 @@ def _format_score(score: int) -> str:
 
 
 def _format_pv(pv_line: list) -> str:
-    """Форматирует PV линию в UCI-строку."""
+    """Форматирует PV линию в UCI-строку"""
     if not pv_line:
         return ""
     return " ".join(

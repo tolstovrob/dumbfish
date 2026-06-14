@@ -16,10 +16,9 @@
 
 import chess
 import time
-from score import evaluate
+from score import evaluate, MATE_SCORE
 from tt import TranspositionTable, TTFlag
 
-MATE_SCORE = 100_000
 MAX_DEPTH = 128
 HISTORY_MAX = 16384
 
@@ -44,14 +43,14 @@ _start_time = 0.0
 
 
 def _reset_stats():
-    """Сброс счётчиков перед новым поиском."""
+    """Сброс счётчиков перед новым поиском"""
     global _nodes, _start_time
     _nodes = 0
     _start_time = time.time()
 
 
 def _get_stats():
-    """Получение текущей статистики."""
+    """Получение текущей статистики"""
     elapsed = max(time.time() - _start_time, 0.001)
     nps = int(_nodes / elapsed)
     return _nodes, int(elapsed * 1000), nps
