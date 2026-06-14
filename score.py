@@ -28,7 +28,7 @@ def _flip(sq: int) -> int:
 
 def _calculate_phase(board: chess.Board) -> tuple[float, float, float]:
     """
-    Вычисление трёх фаз игры.
+    Вычисление весов трёх фаз игры.
     Возвращает (weight_opening, weight_middlegame, weight_endgame)
     """
 
