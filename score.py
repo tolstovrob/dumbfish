@@ -70,8 +70,7 @@ def _interpolate(
     weights: tuple[float, float, float],
 ) -> int:
     """Трёхфазная интерполяция"""
-    w_open, w_mid, w_end = weights
-    return int(opening * w_open + middlegame * w_mid + endgame * w_end)
+    return int(opening * weights[0] + middlegame * weights[1] + endgame * weights[2])
 
 
 def _terminal_score(board: chess.Board) -> int | None:
