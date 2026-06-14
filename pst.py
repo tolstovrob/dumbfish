@@ -10,8 +10,8 @@ PAWN_OPENING = [
     0, 0, 0, 0, 0, 0, 0, 0,
     5, 5, 5, -10, -10, 5, 5, 5,
     15, 15, 25, 30, 30, 25, 15, 15,
-    10, 10, 15, 40, 40, 15, 10, 10,
-    5, 5, 10, 20, 20, 10, 5, 5,
+    10, 10, 15, 50, 50, 15, 10, 10,
+    5, 5, 10, 40, 40, 10, 5, 5,
     0, 0, 5, 10, 10, 5, 0, 0,
     -2, -2, 0, -5, -5, 0, -2, -2,
     -5, -5, -5, -5, -5, -5, -5, -5,
@@ -213,22 +213,12 @@ PST_PHASE = {
     chess.KING: (KING_OPENING, KING_MIDDLEGAME, KING_ENDGAME),
 }
 
-
-VALUES = {
+PIECE_VALUES = {
     chess.PAWN: 100,
     chess.KNIGHT: 320,
     chess.BISHOP: 330,
     chess.ROOK: 500,
     chess.QUEEN: 900,
-    chess.KING: 0,
-}
-
-PHASE_WEIGHTS = {
-    chess.PAWN: 0,
-    chess.KNIGHT: 1,
-    chess.BISHOP: 1,
-    chess.ROOK: 2,
-    chess.QUEEN: 4,
     chess.KING: 0,
 }
 

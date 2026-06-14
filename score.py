@@ -2,8 +2,8 @@
 Фазовая HCE оценка шахматной позиции.
 
 Оценка состоит из эвристик с разными весами в разных стадиях игры:
-  - Материал (VALUES)
-  - PST с фазовой интерполяцией для короля
+  - Материал (PIECE_VALUES)
+  - PST с фазовой интерполяцией
   - Мобильность (MG/EG таблицы для N/B/R/Q)
   - Пешечные структуры (изолированные, сдвоенные, проходные)
   - Безопасность короля (прикрытие, открытые линии)
@@ -32,33 +32,27 @@ def _calculate_phase(board: chess.Board) -> tuple[float, float, float]:
     Возвращает (weight_opening, weight_middlegame, weight_endgame)
     """
 
-    N_START = 74
-    N_END = 2
+    N_START = 80
+    N_END = 0
 
-    PHASE_OP_BOUND = 0.3
-    PHASE_MID_BOUND = 0.6
+    PHASE_OP_BOUND = 0.125  # NOTE(tolstovrob): условно без двух пешек и коня
+    PHASE_MID_BOUND = 0.4  # NOTE(tolstovrob): условно 6 пешек, пара ладей и слонов
 
     N_current = 0
-    for pt in [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.KING]:
-        N_current += len(board.pieces(pt, chess.WHITE))
-        N_current += len(board.pieces(pt, chess.BLACK))
+    for pt, val in PIECE_VALUES.items():
+        N_current += val / 100 * len(board.pieces(pt, chess.WHITE))
+        N_current += val / 100 * len(board.pieces(pt, chess.BLACK))
 
-    phase = (N_START - N_current) / (N_START - N_END)
+    t = (N_START - N_current) / (N_START - N_END)
+    t = min(1.0, max(0.0, t))
 
-    t = min(1.0, max(0.0, phase))
-
-    if t < PHASE_OP_BOUND:
-        w_open = 1.0 - t / PHASE_OP_BOUND
-        w_mid = t / PHASE_OP_BOUND
-        w_end = 0.0
-    elif t < PHASE_MID_BOUND:
-        w_open = 0.0
-        w_mid = 1.0
-        w_end = 0.0
-    else:
-        w_open = 0.0
-        w_mid = 1.0 - (t - PHASE_MID_BOUND) / (1.0 - PHASE_MID_BOUND)
-        w_end = (t - PHASE_MID_BOUND) / (1.0 - PHASE_MID_BOUND)
+    w_open = (1 - t / PHASE_OP_BOUND) ** 2 if t < PHASE_OP_BOUND else 0
+    w_end = (
+        ((t - PHASE_MID_BOUND) / (1 - PHASE_MID_BOUND)) ** 2
+        if t > PHASE_MID_BOUND
+        else 0
+    )
+    w_mid = 1 - w_open - w_end
 
     return w_open, w_mid, w_end
 
@@ -372,7 +366,7 @@ def evaluate(board: chess.Board) -> int:
     weights = _calculate_phase(board)
 
     score = 0
-    for pt, val in VALUES.items():
+    for pt, val in PIECE_VALUES.items():
         score += val * len(board.pieces(pt, chess.WHITE))
         score -= val * len(board.pieces(pt, chess.BLACK))
 
