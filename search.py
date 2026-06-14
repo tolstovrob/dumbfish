@@ -61,7 +61,7 @@ def _see_capture(board: chess.Board, move: chess.Move) -> int:
     Оценка Static Exchange Evaluation для взятия.
 
     Оценивает выгодность взятия по принципу MVV-LVA:
-    чем ценнее жертва и чем дешевле атакующий, тем выше оценка.
+    чем ценнее жертва и чем дешевле атакующий, тем выше оценка
     """
     victim = board.piece_at(move.to_square)
     attacker = board.piece_at(move.from_square)
@@ -82,10 +82,10 @@ def _move_value(
       3. Превращения (900 000 + ценность фигуры)
       4. Первый тихий ход (800 000)
       5. Второй тихий ход (700 000)
-      6. History heuristic (0..16384)
+      6. Эвристика истории (0..16384)
 
     Хороший ход в начале вызывает бета-отсечение и экономит перебор остальных
-    ходов.
+    ходов
     """
 
     if tt_move is not None and move == tt_move:
@@ -109,7 +109,7 @@ def _order_moves(
     board: chess.Board, moves: list[chess.Move], tt_move: chess.Move | None, ply: int
 ) -> list[chess.Move]:
     """
-    Сортировка ходов по убыванию их оценочной ценности.
+    Сортировка ходов по убыванию их оценочной ценности
     """
 
     scored = [(_move_value(board, m, tt_move, ply), m) for m in moves]
@@ -119,7 +119,7 @@ def _order_moves(
 
 def _to_side_score(board: chess.Board) -> int:
     """
-    Преобразует оценку из абсолютной (относительно белых) в относительную.
+    Преобразует оценку из абсолютной (относительно белых) в относительную
     """
 
     score = evaluate(board)
@@ -128,9 +128,7 @@ def _to_side_score(board: chess.Board) -> int:
 
 def _is_quiet(board: chess.Board, move: chess.Move) -> bool:
     """
-    Проверяет, является ли ход тихим (не взятие, не шах, не превращение).
-
-    Тихие ходы - кандидаты для киллеров и history heuristic.
+    Проверяет, является ли ход тихим (не взятие, не шах, не превращение)
     """
 
     if board.is_capture(move) or move.promotion:
@@ -143,7 +141,7 @@ def _is_quiet(board: chess.Board, move: chess.Move) -> bool:
 
 def _update_killers(move: chess.Move, ply: int) -> None:
     """
-    Обновляет эвристику тихих ходов для текущей глубины.
+    Обновляет эвристику тихих ходов для текущей глубины
     """
 
     if move == killer_moves[ply][0]:
@@ -180,7 +178,7 @@ def _quiescence(
       beta  - верхняя граница (лучшее, что соперник нам позволит)
       tt    - транспозиционная таблица
 
-    Возвращает оценку с точки зрения игрока, чей ход.
+    Возвращает оценку с точки зрения игрока, чей ход
     """
 
     global _nodes
@@ -250,7 +248,7 @@ def _quiescence(
 def _see_material(board: chess.Board, move: chess.Move) -> int:
     """
     Приблизительная материальная ценность хода для delta pruning.
-    Возвращает 0 для тихих ходов, ценность жертвы для взятий.
+    Возвращает 0 для тихих ходов, ценность жертвы для взятий
     """
 
     if not board.is_capture(move) and not move.promotion:
@@ -284,7 +282,7 @@ def _pv_search(
       can_null - можно ли применять null-move pruning
       pv_line  - список для сбора PV (изменяется на месте)
 
-    Возвращает кортеж с оценкой и лучшим ходом.
+    Возвращает кортеж с оценкой и лучшим ходом
     """
 
     global _nodes
