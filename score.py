@@ -24,7 +24,7 @@ def _flip(sq: int) -> int:
     return sq ^ 56
 
 
-def calculate_phase(board: chess.Board) -> tuple[float, float, float]:
+def _calculate_phase(board: chess.Board) -> tuple[float, float, float]:
     """
     Вычисление трёх фаз игры.
     Возвращает (weight_opening, weight_middlegame, weight_endgame)
@@ -368,7 +368,7 @@ def evaluate(board: chess.Board) -> int:
     if term is not None:
         return term
 
-    weights = calculate_phase(board)
+    weights = _calculate_phase(board)
 
     score = 0
     for pt, val in VALUES.items():
