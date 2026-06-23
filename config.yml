@@ -1,0 +1,31 @@
+token: "INSERT_LICHESS_TOKEN_THERE"
+url: "https://lichess.org/"
+
+engine:
+  dir: "engines/"
+  name: "EXECUTABLE_HERE"
+  protocol: "uci"
+  engine_options:
+    depth: 7
+  uci_go: []
+  ponder: false
+  move_overhead: 300000
+  wait_for_ready: false
+
+challenge:
+  concurrency: 1
+  accept_bot: true
+  variants:
+    - standard
+    - fromPosition
+  time_controls:
+    - correspondence
+    - unlimited
+  modes:
+    - casual
+
+messages:
+  hello: "Hi! I'm Dumbfish, a coursework bot. Let's play!"
+  goodbye: "Good game! Thanks for playing!"
+
+auto_accept: true
