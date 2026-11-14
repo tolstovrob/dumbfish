@@ -170,7 +170,7 @@ static MAPS: LazyLock<Maps> = LazyLock::new(|| {
     for index in 0..10 {
         let first = (0..64).find(|&sq| maps.a1d1d4[sq] == index).unwrap();
         let near = attacks::king(Square::from_index(first)) | Square::from_index(first).bb();
-        for second in 0..64 {
+        for (second, entry) in maps.kk[index as usize].iter_mut().enumerate() {
             if near.contains(Square::from_index(second)) {
                 continue;
             }
@@ -178,7 +178,7 @@ static MAPS: LazyLock<Maps> = LazyLock::new(|| {
                 (0, o) if o > 0 => {}
                 (0, 0) => both_on_diagonal.push((index, second)),
                 _ => {
-                    maps.kk[index as usize][second] = code;
+                    *entry = code;
                     code += 1;
                 }
             }
@@ -345,13 +345,13 @@ impl Table {
                 }
                 if pairs.flags & WIDE != 0 {
                     at += at & 1;
-                    for i in 0..4 {
-                        pairs.map_index[i] = (at - self.map) / 2 + 1;
+                    for map_index in &mut pairs.map_index {
+                        *map_index = (at - self.map) / 2 + 1;
                         at += 2 * usize::from(read.u16(at)?) + 2;
                     }
                 } else {
-                    for i in 0..4 {
-                        pairs.map_index[i] = at - self.map + 1;
+                    for map_index in &mut pairs.map_index {
+                        *map_index = at - self.map + 1;
                         at += usize::from(read.u8(at)?) + 1;
                     }
                 }
@@ -432,8 +432,14 @@ impl Table {
             size += 1;
         }
         let d = &self.pairs[stm % self.pairs.len()][file];
-        for i in lead_count..size.saturating_sub(1) {
-            if let Some(j) = (i + 1..size).find(|&j| pieces[j] == d.pieces[i]) {
+        for (i, &piece) in d
+            .pieces
+            .iter()
+            .enumerate()
+            .take(size.saturating_sub(1))
+            .skip(lead_count)
+        {
+            if let Some(j) = (i + 1..size).find(|&j| pieces[j] == piece) {
                 pieces.swap(i, j);
                 squares.swap(i, j);
             }
